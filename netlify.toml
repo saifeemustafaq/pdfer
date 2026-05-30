@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[functions]
+  # Increase function timeout for PDF processing (max 26s on free tier)
+  included_files = ["node_modules/sharp/**", "node_modules/pdf-lib/**"]
+
+[build.environment]
+  NODE_VERSION = "20"

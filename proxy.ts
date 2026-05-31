@@ -7,7 +7,7 @@ export function proxy(request: NextRequest) {
     const contentLength = Number(request.headers.get("content-length") ?? 0);
     if (contentLength > MAX_UPLOAD_BYTES) {
       return NextResponse.json(
-        { error: "File too large — 6 MB limit" },
+        { error: "File too large: 6 MB limit" },
         { status: 413 }
       );
     }

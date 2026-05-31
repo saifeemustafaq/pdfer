@@ -2,6 +2,7 @@
 
 import { Download } from "lucide-react";
 import { PrimaryActionButton } from "@/components/app-button";
+import { triggerBlobDownload } from "@/lib/download-client";
 import { cn } from "@/lib/utils";
 
 type DownloadButtonProps = {
@@ -18,14 +19,7 @@ export function DownloadButton({
   className,
 }: DownloadButtonProps) {
   function handleDownload() {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    triggerBlobDownload(blob, filename);
   }
 
   return (

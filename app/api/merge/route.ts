@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mergeFiles } from "@/lib/services/pdf-merger";
 import { OUTPUT_FILENAMES } from "@/lib/constants";
+import {
+  getUploadSizeError,
+  isAcceptedMergeMime,
+} from "@/lib/file-utils";
 import type { FileEntry } from "@/types";
 
 export async function POST(request: NextRequest) {
@@ -16,6 +20,8 @@ export async function POST(request: NextRequest) {
     }
 
     const files: FileEntry[] = [];
+    let totalSize = 0;
+
     for (const entry of entries) {
       if (!(entry instanceof File)) {
         return NextResponse.json(
@@ -23,10 +29,26 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+
+      const buffer = Buffer.from(await entry.arrayBuffer());
+      totalSize += buffer.byteLength;
+
+      if (!isAcceptedMergeMime(entry.type, buffer)) {
+        return NextResponse.json(
+          { error: "Only PDF, JPEG, and PNG files are accepted" },
+          { status: 400 }
+        );
+      }
+
       files.push({
-        buffer: Buffer.from(await entry.arrayBuffer()),
+        buffer,
         mimetype: entry.type,
       });
+    }
+
+    const sizeError = getUploadSizeError(totalSize);
+    if (sizeError) {
+      return NextResponse.json({ error: sizeError }, { status: 413 });
     }
 
     const merged = await mergeFiles(files);

@@ -7,11 +7,11 @@ type ButtonProps = ComponentProps<typeof Button>;
 
 /**
  * Button size standard (see DESIGN_GUIDE §2.1):
- * - PrimaryAction: default size, default variant — one main CTA per tool view
- * - SecondaryAction: default size, outline — supporting actions
- * - DestructiveAction: default size, destructive — clear / reset lists
- * - CardAction: default size — home page tool card links
- * - IconTouch: icon size, 48×48 min — file/page remove controls on mobile
+ * - PrimaryAction: default size, default variant; one main CTA per tool view
+ * - SecondaryAction: default size, outline; supporting actions
+ * - DestructiveAction: default size, destructive; clear / reset lists
+ * - CardAction: default size; home page tool card links
+ * - IconTouch: icon size, 48×48 min; file/page remove controls on mobile
  */
 
 export function PrimaryActionButton({ className, ...props }: ButtonProps) {

@@ -22,6 +22,7 @@ import {
   type PdfImageFormat,
 } from "@/lib/constants";
 import { formatBytes } from "@/lib/file-utils";
+import { triggerBlobDownload } from "@/lib/download-client";
 
 export function PdfToImageClient() {
   const [file, setFile] = useState<File | null>(null);
@@ -35,7 +36,7 @@ export function PdfToImageClient() {
     const pdf = files[0];
     if (!pdf) return;
     if (pdf.size > MAX_UPLOAD_BYTES) {
-      toast.error("File too large — 6 MB limit");
+      toast.error("File too large: 6 MB limit");
       return;
     }
     setFile(pdf);
@@ -66,19 +67,11 @@ export function PdfToImageClient() {
       });
 
       setResult(zip);
-      toast.success("Done — downloading…");
-
-      setTimeout(() => {
-        const url = URL.createObjectURL(zip);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = OUTPUT_FILENAMES.pdfToImageZip;
-        a.click();
-        URL.revokeObjectURL(url);
-      }, 300);
+      toast.success("Done. Downloading…");
+      triggerBlobDownload(zip, OUTPUT_FILENAMES.pdfToImageZip, 300);
     } catch (err) {
       console.error("exportPdfToImageZip failed:", err);
-      toast.error("Processing failed — please try again");
+      toast.error("Processing failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -88,7 +81,7 @@ export function PdfToImageClient() {
     <ToolShell
       icon={FileImage}
       title="PDF to image"
-      description="Export each page as an image. Processing runs in your browser — the PDF is not uploaded."
+      description="Export each page as an image. Processing runs in your browser; the PDF is not uploaded."
     >
       <Link
         href={TOOL_ROUTES.convert}
@@ -154,7 +147,7 @@ export function PdfToImageClient() {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             {pageCount} page{pageCount !== 1 ? "s" : ""} exported as{" "}
-            {format.toUpperCase()} —{" "}
+            {format.toUpperCase()} ·{" "}
             <span className="font-mono tabular-nums text-foreground">
               {formatBytes(result.size)}
             </span>

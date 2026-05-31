@@ -17,6 +17,7 @@ import { ActionButtonGroup } from "@/components/action-button-group";
 import { ProcessingProgress } from "@/components/processing-progress";
 import { SizeWarning } from "@/components/size-warning";
 import { reorderPdfPages } from "@/lib/pdf-client";
+import { triggerBlobDownload } from "@/lib/download-client";
 import {
   API_ROUTES,
   MAX_UPLOAD_BYTES,
@@ -35,8 +36,6 @@ const MERGE_ACCEPT = {
   "application/pdf": [".pdf"],
   "image/jpeg": [".jpg", ".jpeg"],
   "image/png": [".png"],
-  "image/webp": [".webp"],
-  "image/gif": [".gif"],
 };
 
 let idCounter = 0;
@@ -71,7 +70,7 @@ export function MergeClient() {
   async function handleMerge() {
     if (items.length < 2) return;
     if (overLimit) {
-      toast.error("File too large — 6 MB limit");
+      toast.error("File too large: 6 MB limit");
       return;
     }
 
@@ -84,17 +83,17 @@ export function MergeClient() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: "Request failed" }));
-        toast.error(body.error ?? "Processing failed — please try again");
+        toast.error(body.error ?? "Processing failed. Please try again.");
         return;
       }
 
       const blob = await res.blob();
       setMergedBlob(blob);
       setStep("edit-pages");
-      toast.success("Done — review pages below");
+      toast.success("Done. Review pages below.");
     } catch (err) {
       console.error("POST /api/merge failed:", err);
-      toast.error("Processing failed — please try again");
+      toast.error("Processing failed. Please try again.");
     } finally {
       setMerging(false);
     }
@@ -104,22 +103,14 @@ export function MergeClient() {
     if (!mergedBlob) return;
     setApplying(true);
     try {
-      const { reorderPdfPages } = await import("@/lib/pdf-client");
       const result = await reorderPdfPages(mergedBlob, orderedKeptIndices);
       setFinalBlob(result);
       setStep("done");
-      toast.success("Done — downloading…");
-      setTimeout(() => {
-        const url = URL.createObjectURL(result);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = OUTPUT_FILENAMES.merge;
-        a.click();
-        URL.revokeObjectURL(url);
-      }, 300);
+      toast.success("Done. Downloading…");
+      triggerBlobDownload(result, OUTPUT_FILENAMES.merge, 300);
     } catch (err) {
       console.error("reorderPdfPages failed:", err);
-      toast.error("Processing failed — please try again");
+      toast.error("Processing failed. Please try again.");
     } finally {
       setApplying(false);
     }
@@ -221,7 +212,7 @@ export function MergeClient() {
       {step === "done" && finalBlob && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Your PDF is ready —{" "}
+            Your PDF is ready:{" "}
             <span className="font-mono tabular-nums text-foreground">
               {formatBytes(finalBlob.size)}
             </span>

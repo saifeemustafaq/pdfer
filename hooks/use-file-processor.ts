@@ -24,7 +24,7 @@ export function useFileProcessor() {
     async ({
       endpoint,
       formData,
-      errorFallback = "Processing failed — please try again",
+      errorFallback = "Processing failed. Please try again.",
     }: ProcessOptions): Promise<ProcessSuccess | null> => {
       setLoading(true);
       try {

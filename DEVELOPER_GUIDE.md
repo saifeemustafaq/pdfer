@@ -1,4 +1,4 @@
-# Pdfer — Developer Guide
+# Pdfer Developer Guide
 
 Baseline rules for structure, reuse, and conventions. Follow these unless there's a clear reason to deviate.
 
@@ -26,10 +26,11 @@ Pdfer is a **stateless tool** — there is no user account, no session, and no d
 
 ### Why pure JavaScript (not Python)
 
-All three operations — merge, compress, and image-to-PDF — are handled entirely in Node.js:
+All server-side PDF operations (merge, compress, image-to-PDF) are handled in Node.js. PDF-to-image export and merge page editing run in the browser:
 
-- **pdf-lib** handles merging PDFs, embedding JPEG/PNG images as pages, and rewriting PDF structure for compression.
-- **sharp** normalises images before embedding (format conversion, EXIF stripping, quality downsampling).
+- **pdf-lib** handles merging PDFs, embedding JPEG/PNG images as pages, rewriting PDF structure for compression, and client-side page reorder/remove.
+- **sharp** (server only) normalises images before embedding (format conversion, EXIF stripping, quality downsampling).
+- **pdfjs-dist** (browser only) rasterises PDF pages for export to JPEG/PNG ZIP.
 - **No Python microservice.** A separate Python backend (e.g. Render + PyMuPDF) would mean separate deploys, CORS config, cold starts, and no Netlify-native hosting. The JS approach achieves 60–80% size reduction on scan-heavy PDFs — the primary use case — without the operational overhead. If print-quality ghostscript-level compression becomes necessary, a Python microservice can be added in a future sprint without touching the frontend.
 
 ---
@@ -40,54 +41,54 @@ All three operations — merge, compress, and image-to-PDF — are handled entir
 pdfer/
 ├── app/
 │   ├── (marketing)/
-│   │   └── page.tsx                    # Landing page — feature cards linking to each tool
+│   │   ├── layout.tsx                  # Desktop theme toggle on landing
+│   │   └── page.tsx                    # Landing: hero, tool cards, architecture modal, trust section
 │   ├── (tools)/
-│   │   ├── layout.tsx                  # Tool shell: top nav (desktop) + bottom tab bar (mobile)
-│   │   ├── merge/
-│   │   │   ├── page.tsx                # Merge tool: drag PDFs + images, reorder, export
-│   │   │   ├── loading.tsx             # Merge skeleton
-│   │   │   └── error.tsx               # Merge error boundary
-│   │   ├── compress/
-│   │   │   ├── page.tsx                # Compress tool: upload PDF, pick quality, download
-│   │   │   ├── loading.tsx             # Compress skeleton
-│   │   │   └── error.tsx               # Compress error boundary
-│   │   └── image-to-pdf/
-│   │       ├── page.tsx                # Image-to-PDF tool: upload 1–N images, export as PDF
-│   │       ├── loading.tsx             # Image-to-PDF skeleton
-│   │       └── error.tsx               # Image-to-PDF error boundary
+│   │   ├── layout.tsx                  # Tool shell: TopNav (desktop) + pb for mobile tab bar
+│   │   ├── merge/                      # Merge PDFs + images; client page reorder step
+│   │   ├── compress/                   # Compress PDF with quality presets
+│   │   ├── convert/                    # Hub linking image-to-PDF and PDF-to-image
+│   │   ├── image-to-pdf/               # Images → multi-page PDF (server)
+│   │   └── pdf-to-image/               # PDF pages → ZIP of images (browser)
 │   ├── api/
 │   │   ├── merge/route.ts              # POST multipart: PDFs + images → merged PDF
-│   │   ├── compress/route.ts           # POST multipart: PDF + quality setting → compressed PDF
-│   │   └── image-to-pdf/route.ts       # POST multipart: 1–N images → PDF
-│   ├── layout.tsx                      # Root layout (fonts, ThemeProvider, Toaster)
+│   │   ├── compress/route.ts           # POST multipart: PDF + quality → compressed PDF
+│   │   └── image-to-pdf/route.ts       # POST multipart: images → PDF
+│   ├── layout.tsx                      # Root layout (Inter, ThemeProvider, Toaster, MobileTabBar)
 │   ├── error.tsx                       # Root error boundary
 │   └── globals.css                     # Tailwind v4 + shadcn theme tokens
 ├── components/
 │   ├── ui/                             # shadcn-generated UI primitives (do not modify)
-│   ├── top-nav.tsx                     # Desktop navigation bar (Home / Merge / Compress / Image to PDF)
-│   ├── mobile-tab-bar.tsx              # Bottom tab bar for mobile (mirrors top nav)
-│   ├── file-dropzone.tsx               # react-dropzone wrapper: accepts PDF and/or images, configurable
-│   ├── file-list.tsx                   # Drag-to-reorder list of staged files (used by merge + image-to-pdf)
-│   ├── quality-slider.tsx              # Compression quality picker (Low / Medium / High)
-│   └── download-button.tsx             # Download trigger for processed file blobs
+│   ├── app-button.tsx                  # PrimaryActionButton, SecondaryActionButton, …
+│   ├── architecture-modal.tsx          # Landing-page developer architecture dialog
+│   ├── file-dropzone.tsx               # react-dropzone wrapper (all tools)
+│   ├── file-list.tsx                   # Drag-to-reorder staged files
+│   ├── page-grid.tsx                   # Merge: thumbnail grid, reorder/remove pages
+│   ├── landing-trust-section.tsx       # Privacy pillars, processing steps, guidelines
+│   ├── quality-slider.tsx              # Compression preset picker
+│   ├── download-button.tsx             # Blob download trigger
+│   ├── top-nav.tsx                     # Desktop nav (all tools + theme toggle)
+│   └── mobile-tab-bar.tsx              # Mobile bottom tabs (Home, Merge, Compress, Convert)
 ├── hooks/
-│   └── use-file-processor.ts           # Generic hook: manages upload state, calls API, returns blob URL
+│   └── use-file-processor.ts           # Generic API fetch + toast error handling
 ├── lib/
-│   ├── utils.ts                        # cn() helper (clsx + tailwind-merge)
-│   ├── constants.ts                    # MAX_UPLOAD_BYTES, ACCEPTED_PDF_TYPES, ACCEPTED_IMAGE_TYPES, QUALITY_PRESETS
+│   ├── constants.ts                    # MAX_UPLOAD_BYTES, presets, routes, MIME lists
+│   ├── download-client.ts              # triggerBlobDownload() for client downloads
+│   ├── file-utils.ts                   # MIME guards, size validation, filename helpers
+│   ├── pdf-client.ts                   # Browser: reorder/remove PDF pages (pdf-lib)
+│   ├── pdf-export.ts                   # Browser: PDF → image ZIP (pdfjs-dist + jszip)
 │   ├── services/
-│   │   ├── pdf-merger.ts               # pdf-lib: merge N PDFs and/or images into one PDF
-│   │   ├── pdf-compressor.ts           # pdf-lib + sharp: re-encode embedded images at target quality
-│   │   └── image-to-pdf.ts             # pdf-lib + sharp: normalise images and write as PDF pages
-│   └── file-utils.ts                   # MIME type guards, buffer helpers, filename sanitisation
+│   │   ├── pdf-merger.ts               # Server: merge PDFs/images (pdf-lib + sharp)
+│   │   ├── pdf-compressor.ts           # Server: re-encode embedded images (pdf-lib + sharp)
+│   │   └── image-to-pdf.ts             # Server: images → PDF pages (pdf-lib + sharp)
+│   └── utils.ts                        # cn() helper
 ├── types/
-│   └── index.ts                        # Shared TypeScript types (QualityPreset, FileEntry, ProcessResult)
-├── proxy.ts                            # Request guard (Next.js 16 convention) — size + MIME validation
-├── components.json                     # shadcn configuration
-├── netlify.toml                        # Netlify build config + plugin declaration
-├── tsconfig.json
-├── package.json
-└── .env.example                        # Template for any future environment variables
+│   └── index.ts                        # FileEntry, StagedFileItem, ProcessResult, …
+├── proxy.ts                            # Next.js 16 request guard (6 MB upload cap on /api/*)
+├── DEVELOPER_GUIDE.md                  # Structure and API conventions (this file)
+├── DESIGN_GUIDE.md                     # Visual language and UI patterns
+├── netlify.toml                        # Netlify build + @netlify/plugin-nextjs
+└── components.json                     # shadcn configuration
 ```
 
 ### Grouping philosophy
@@ -379,13 +380,13 @@ Do not duplicate this value.
   ```ts
   // Bad — variable dropped, no log
   } catch {
-    toast.error("Processing failed — please try again");
+    toast.error("Processing failed. Please try again.");
   }
 
   // Good
   } catch (err) {
     console.error("POST /api/merge failed:", err);
-    toast.error("Processing failed — please try again");
+    toast.error("Processing failed. Please try again.");
   }
   ```
 
@@ -421,6 +422,14 @@ Do not duplicate this value.
 - **Error states** — Every tool route segment must have an `error.tsx` boundary. The root `app/` must also have a catch-all `error.tsx`.
 - **Toasts** — Use Sonner for all user feedback (success, errors, oversized file warnings). The `<Toaster />` is mounted in root `layout.tsx`.
 - **Progress feedback** — File processing (especially compression on large PDFs) can take several seconds. Show a loading spinner or progress indicator while the API request is in flight. Never leave the user staring at a frozen button.
+
+### User-facing copy
+
+See [DESIGN_GUIDE.md §4.5](DESIGN_GUIDE.md#45-no-em-dashes) for voice and examples. In code:
+
+- **No em dashes (`—`, U+2014)** in any string the user sees: toasts, labels, metadata, marketing copy, `lib/constants.ts` descriptions, and API `{ error: string }` responses.
+- Prefer a **period** between short sentences (`Done. Downloading…`), a **colon** for label + detail (`File too large: 6 MB limit`), or a **comma** for continuation.
+- Before adding or changing copy, search `app/`, `components/`, `hooks/`, `lib/constants.ts`, and `proxy.ts` for `—` and remove any hits.
 
 ---
 
@@ -589,6 +598,7 @@ FormData (files[]) → validate MIMEs + sizes → image-to-pdf.ts
 | Return `{ error: string }` for all API error responses | Use `{ message }` or `{ success: false }` shapes |
 | Show a loading indicator while API calls are in flight | Leave users staring at a frozen submit button |
 | Surface all fetch failures via `toast.error()` | Silently swallow failed network requests |
+| Use periods/colons instead of em dashes in user-facing strings | Use `—` in toasts, labels, metadata, or API errors |
 | Mount `ThemeProvider` in root layout | Rely on `useTheme()` without a provider |
 | Add `loading.tsx` + `error.tsx` for every tool route segment | Skip loading/error states for tool pages |
 | Use `proxy.ts` for request-level validation (Next.js 16) | Use `middleware.ts` (deprecated in Next.js 16) |

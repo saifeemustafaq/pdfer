@@ -12,7 +12,7 @@ type ThemeToggleProps = {
 
 /**
  * Cycles explicit light/dark overrides. Default is system (browser/device)
- * until the user picks a mode — stored in localStorage by next-themes.
+ * until the user picks a mode (stored in localStorage by next-themes).
  */
 export function ThemeToggle({ className }: ThemeToggleProps) {
   const [mounted, setMounted] = useState(false);

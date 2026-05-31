@@ -17,15 +17,19 @@ import { QualitySlider } from "@/components/quality-slider";
 import { ProcessingProgress } from "@/components/processing-progress";
 import {
   API_ROUTES,
-  OUTPUT_FILENAMES,
   type QualityPreset,
 } from "@/lib/constants";
-import { formatBytes, sanitizeFilename } from "@/lib/file-utils";
+import {
+  formatBytes,
+  buildCompressedFilename,
+} from "@/lib/file-utils";
+import { triggerBlobDownload } from "@/lib/download-client";
 
 type CompressionResult = {
   blob: Blob;
   originalSize: number;
   compressedSize: number;
+  filename: string;
 };
 
 export function CompressClient() {
@@ -66,7 +70,7 @@ export function CompressClient() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: "Request failed" }));
-        toast.error(body.error ?? "Processing failed — please try again");
+        toast.error(body.error ?? "Processing failed. Please try again.");
         return;
       }
 
@@ -76,24 +80,16 @@ export function CompressClient() {
       const compressedSize =
         Number(res.headers.get("X-Compressed-Size")) || blob.size;
 
-      setResult({ blob, originalSize, compressedSize });
+      const filename = buildCompressedFilename(file.name);
+
+      setResult({ blob, originalSize, compressedSize, filename });
       setDone(true);
-      toast.success("Done — downloading…");
+      toast.success("Done. Downloading…");
 
-      const base = sanitizeFilename(file.name.replace(/\.pdf$/i, ""));
-      const filename = `compressed-${base}.pdf`;
-
-      setTimeout(() => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-      }, 300);
+      triggerBlobDownload(blob, filename, 300);
     } catch (err) {
       console.error("POST /api/compress failed:", err);
-      toast.error("Processing failed — please try again");
+      toast.error("Processing failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -161,7 +157,7 @@ export function CompressClient() {
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-medium text-success">
             <CheckCircle2 className="w-4 h-4" />
-            Done — downloading…
+            Done. Downloading…
           </div>
 
           <div className="grid grid-cols-3 gap-3 text-center">
@@ -193,7 +189,7 @@ export function CompressClient() {
           <ActionButtonGroup>
             <DownloadButton
               blob={result.blob}
-              filename={OUTPUT_FILENAMES.compress}
+              filename={result.filename}
               label="Download"
             />
             <SecondaryActionButton type="button" onClick={handleClear}>

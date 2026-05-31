@@ -24,6 +24,7 @@ import {
   UPLOAD_WARN_BYTES,
 } from "@/lib/constants";
 import { formatBytes } from "@/lib/file-utils";
+import { triggerBlobDownload } from "@/lib/download-client";
 import type { StagedFileItem } from "@/types";
 
 const IMAGE_ACCEPT = {
@@ -56,7 +57,7 @@ export function ImageToPdfClient() {
   async function handleConvert() {
     if (items.length === 0) return;
     if (overLimit) {
-      toast.error("File too large — 6 MB limit");
+      toast.error("File too large: 6 MB limit");
       return;
     }
 
@@ -74,25 +75,17 @@ export function ImageToPdfClient() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: "Request failed" }));
-        toast.error(body.error ?? "Processing failed — please try again");
+        toast.error(body.error ?? "Processing failed. Please try again.");
         return;
       }
 
       const blob = await res.blob();
       setResult(blob);
-      toast.success("Done — downloading…");
-
-      setTimeout(() => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = OUTPUT_FILENAMES.imageToPdf;
-        a.click();
-        URL.revokeObjectURL(url);
-      }, 300);
+      toast.success("Done. Downloading…");
+      triggerBlobDownload(blob, OUTPUT_FILENAMES.imageToPdf, 300);
     } catch (err) {
       console.error("POST /api/image-to-pdf failed:", err);
-      toast.error("Processing failed — please try again");
+      toast.error("Processing failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -160,7 +153,7 @@ export function ImageToPdfClient() {
       {result && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Your PDF is ready —{" "}
+            Your PDF is ready:{" "}
             <span className="font-mono tabular-nums text-foreground">
               {formatBytes(result.size)}
             </span>

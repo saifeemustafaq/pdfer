@@ -14,11 +14,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Pdfer — PDF tools that respect your privacy",
+    default: "Pdfer | PDF tools that respect your privacy",
     template: "%s | Pdfer",
   },
   description:
-    "Free PDF tools with no sign-up or paywall. Files are processed in memory and never stored — merge, compress, and convert between PDFs and images.",
+    "Free PDF tools with no sign-up or paywall. Files are processed in memory and never stored. Merge, compress, and convert between PDFs and images.",
   metadataBase: new URL("https://pdfer.netlify.app"),
 };
 

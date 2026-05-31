@@ -10,8 +10,8 @@ export function SizeWarning({ overLimit }: SizeWarningProps) {
       <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-warning" />
       <span>
         {overLimit
-          ? "File too large — 6 MB limit"
-          : "Approaching 6 MB limit — consider removing files."}
+          ? "File too large: 6 MB limit"
+          : "Approaching 6 MB limit. Consider removing files."}
       </span>
     </div>
   );

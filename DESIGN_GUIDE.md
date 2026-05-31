@@ -1,4 +1,4 @@
-# Pdfer — Design Guide
+# Pdfer Design Guide
 
 Baseline rules for visual language, component patterns, screen layouts, and motion across every Pdfer interface. Follow these unless there's a clear reason to deviate.
 
@@ -288,7 +288,7 @@ File processing can take several seconds on large PDFs. The UI must not look fro
 
 - Height: `h-14` (56px). Background: `bg-background/80` with `backdrop-blur-sm`. Bottom border: `border-b border-border`.
 - Left: logo + app name ("Pdfer") in `font-semibold`. Clicking navigates to `/`.
-- Center (or right of logo): three nav links — Merge, Compress, Image to PDF.
+- Center (or right of logo): nav links — Merge, Compress, Image to PDF, PDF to image.
 - Right: theme toggle (`Sun`/`Moon` icon button, `ghost`).
 - Active link: `text-primary font-medium`. Inactive: `text-muted-foreground`. No underline indicator — color alone distinguishes the active state.
 
@@ -314,10 +314,10 @@ Three cards, one per tool. Each card:
 
 Use Sonner for all user-facing feedback:
 
-- `toast.success("Done — downloading…")` — on successful processing.
-- `toast.error("File too large — 6 MB limit")` — on file size rejection.
-- `toast.error("Invalid file type — PDF and images only")` — on wrong MIME type.
-- `toast.error("Processing failed — please try again")` — on API error.
+- `toast.success("Done. Downloading…")` on successful processing.
+- `toast.error("File too large: 6 MB limit")` on file size rejection.
+- `toast.error("Invalid file type: PDF and images only")` on wrong MIME type.
+- `toast.error("Processing failed. Please try again.")` on API error.
 - `toast.info("Images will be compressed to JPEG for embedding")` — informational, on image upload to the merge tool.
 
 No toast for file additions to the list — the visual list update is feedback enough.
@@ -328,11 +328,13 @@ No toast for file additions to the list — the visual list update is feedback e
 
 ### 3.1 Landing page
 
-Layout: `max-w-6xl`, scrollable vertical stack (`gap-8` / `gap-10`).
+Layout: `max-w-5xl`, scrollable vertical stack (`gap-8` / `gap-10`).
 
-- **Hero**: headline (`text-2xl` / `md:text-[1.65rem] font-bold`), tagline (`text-sm text-muted-foreground`), then a short **origin story** paragraph (why the app exists — no paywalls, no sign-ups, no harvesting uploads).
+- **Hero**: headline (`text-2xl font-bold`), tagline (`text-sm text-muted-foreground`), then a short **origin story** paragraph (why the app exists: no paywalls, no sign-ups, no harvesting uploads).
 - **Tool cards**: four-column grid on `lg` (§2.8; compact `ToolCard` variant).
-- **Trust section** (`LandingTrustSection`): `rounded-2xl border bg-muted/40` strip below the cards — four pillar cards (2×2 grid) plus a four-step “How processing works” row. Icons in `bg-primary/10` circles; copy must match the stateless architecture (no DB, in-memory processing, HTTPS, no third-party file APIs).
+- **Architecture modal** (`ArchitectureModal`): centered `SecondaryActionButton` ("App architecture") below the cards. Opens a shadcn `Dialog` with system overview diagram, server request flow, processing matrix, and repo map for developers.
+- **GitHub link** (`GitHubRepoLink`): outline button beside the architecture control ("View source on GitHub"). Opens `GITHUB_REPO_URL` in a new tab (`rel="noopener noreferrer"`).
+- **Trust section** (`LandingTrustSection`): `rounded-2xl border bg-muted/40` strip — four privacy pillar cards (2×2 grid), four-step “How processing works” row, and **Guidelines & limits** (common failure reasons). Icons in `bg-primary/10` or `bg-info/10` circles; copy must match the stateless architecture (no DB, in-memory processing, HTTPS, no third-party file APIs).
 - **Footer**: one line — `text-xs text-muted-foreground`: "No sign-up. Files are never stored."
 
 ### 3.2 Tool pages (merge / compress / image-to-pdf)
@@ -401,18 +403,19 @@ Pdfer is a **quiet, fast, honest tool**. The copy should be minimal and direct. 
 
 ### 4.1 Principles
 
-- **Plain language.** "File too large" — not "Oops! This file exceeds our upload limit."
-- **Active voice.** "Merging files…" — not "Files are being merged."
+- **Plain language.** "File too large" not "Oops! This file exceeds our upload limit."
+- **Active voice.** "Merging files…" not "Files are being merged."
 - **No filler.** The UI doesn't greet you. It shows a drop zone.
-- **Honest about failure.** "Processing failed — please try again" is correct. "Hmm, something went wrong 🤔" is not.
+- **Honest about failure.** "Processing failed. Please try again." is correct. "Hmm, something went wrong 🤔" is not.
 - **No emoji in UI copy.** Not in labels, not in toasts, not in empty states.
+- **No em dashes.** Never use `—` (U+2014) in user-facing text. See §4.5.
 
 ### 4.2 UI copy length
 
 - Buttons: 1–3 words. "Merge files", "Compress PDF", "Convert", "Download".
 - Drop zone label: one sentence. "Drop files here, or click to browse."
 - Drop zone sub-label: one line of `text-xs`. "PDF and images up to 6 MB."
-- Toast messages: one clause. "Done — downloading…" / "File too large — 6 MB limit."
+- Toast messages: one clause. "Done. Downloading…" / "File too large: 6 MB limit."
 - Error messages: one sentence, no fluff.
 
 ### 4.3 Tool copy reference
@@ -426,7 +429,7 @@ Pdfer is a **quiet, fast, honest tool**. The copy should be minimal and direct. 
 | Image-to-PDF drop zone label | "Drop images here, or click to browse." |
 | Image-to-PDF drop zone hint | "Accepts JPEG, PNG · max 6 MB total" |
 | Processing state | "Processing…" |
-| Success state | "Done — downloading…" |
+| Success state | "Done. Downloading…" |
 | Download fallback button | "Download" |
 | Compression result badge | "–{n}% smaller" |
 | Footer trust line | "No sign-up. Files are never stored." |
@@ -435,13 +438,29 @@ Pdfer is a **quiet, fast, honest tool**. The copy should be minimal and direct. 
 
 | Failure | Toast / message |
 |---------|-----------------|
-| File over limit | "File too large — 6 MB limit" |
+| File over limit | "File too large: 6 MB limit" |
 | Wrong file type (PDF expected) | "Only PDF files are accepted here" |
 | Wrong file type (image expected) | "Only JPEG and PNG images are accepted" |
 | No files selected | (button stays disabled — no toast needed) |
-| API processing error | "Processing failed — please try again" |
-| Network failure | "Couldn't reach the server — check your connection" |
-| Partial merge failure | "One or more files couldn't be read — try again with different files" |
+| API processing error | "Processing failed. Please try again." |
+| Network failure | "Couldn't reach the server. Check your connection." |
+| Partial merge failure | "One or more files couldn't be read. Try again with different files." |
+
+### 4.5 No em dashes
+
+**Never use the em dash** (`—`, Unicode U+2014) anywhere in user-facing copy: labels, toasts, page titles, meta descriptions, marketing paragraphs, error messages, preset descriptions, or API errors shown to the user.
+
+Use these patterns instead:
+
+| Instead of em dash | Use | Example |
+|--------------------|-----|---------|
+| Two related sentences | Period | `Done. Downloading…` |
+| Label + detail | Colon | `File too large: 6 MB limit` |
+| Light continuation | Comma | `stay simple, and leave your documents alone` |
+| Inline list in a hint | Middle dot (·) | `Accepts PDF · max 6 MB` |
+| Title separator (metadata) | Pipe (\|) | `Pdfer \| PDF tools` |
+
+Before shipping copy, search the repo for `—` in `app/`, `components/`, `hooks/`, `lib/constants.ts`, and `proxy.ts`.
 
 ---
 
@@ -462,9 +481,10 @@ Pdfer is a **quiet, fast, honest tool**. The copy should be minimal and direct. 
 | Use `tabular-nums` for file sizes, percentages, ratios | Let file sizes jump layout on update |
 | 48×48px minimum tap targets on mobile | Ship 32px remove buttons on mobile |
 | Sticky primary CTA above the tab bar on mobile | Hide the CTA below the fold on mobile |
-| Write minimal, direct copy ("File too large") | Use filler, exclamations, or emoji in copy |
+| Write minimal, direct copy ("File too large: 6 MB limit") | Use em dashes (`—`) in any user-facing string |
+| No emoji in UI copy | Use filler, exclamations, or emoji in copy |
 | Both Claude Orange Light and Claude Orange Dark at full fidelity | Ship a feature in only one mode |
-| Only two themes — light `:root` and dark `.dark` | Add a neutral palette or third theme variant |
+| Only two themes: light `:root` and dark `.dark` | Add a neutral palette or third theme variant |
 | Use lifted dark `--primary` for accents on dark surfaces | Copy light-mode `#C15F3C` verbatim into dark mode |
 | Claude Orange only — no second accent color | Introduce teal, indigo, or any second brand color |
 | Use `cn()` for conditional Tailwind classes | Use template literal interpolation for class names |

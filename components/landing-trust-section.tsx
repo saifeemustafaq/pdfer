@@ -3,6 +3,13 @@ import {
   UserX,
   HardDrive,
   Lock,
+  Scale,
+  Timer,
+  FileType,
+  LockKeyhole,
+  Minimize2,
+  FileWarning,
+  Laptop,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -36,7 +43,7 @@ const pillars: Pillar[] = [
     icon: Shield,
     title: "Your file is not the product",
     description:
-      "No ads gated behind exports, no “free” tier that harvests uploads. The tool exists to do the job — not to collect your documents.",
+      "No ads gated behind exports, no “free” tier that harvests uploads. The tool exists to do the job, not to collect your documents.",
   },
 ];
 
@@ -55,7 +62,7 @@ const processingSteps = [
     step: 3,
     title: "In-memory engine",
     description:
-      "pdf-lib and sharp rewrite your PDF on the server in RAM — merge pages, re-encode images, or build a new PDF.",
+      "pdf-lib and sharp rewrite your PDF on the server in RAM: merge pages, re-encode images, or build a new PDF.",
   },
   {
     step: 4,
@@ -64,6 +71,57 @@ const processingSteps = [
       "You get the result immediately. The server keeps no copy; there is nothing to log in and retrieve later.",
   },
 ] as const;
+
+type Guideline = {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+};
+
+const guidelines: Guideline[] = [
+  {
+    icon: Scale,
+    title: "6 MB per job",
+    description:
+      "Each upload is capped at 6 MB (total for merge and image-to-PDF, single file for compress and PDF-to-image). This is a hosting limit. You may see “File too large: 6 MB limit” before processing starts.",
+  },
+  {
+    icon: Timer,
+    title: "Processing timeout",
+    description:
+      "Large or scan-heavy PDFs can exceed the server time limit. Try fewer files, a smaller export, or compress with the Small file preset first.",
+  },
+  {
+    icon: FileType,
+    title: "Supported formats",
+    description:
+      "Merge: PDF, JPEG, PNG. Compress: PDF only. Image to PDF: JPEG, PNG. PDF to image: PDF only (processed in your browser). Other formats are rejected at the drop zone.",
+  },
+  {
+    icon: LockKeyhole,
+    title: "Password-protected PDFs",
+    description:
+      "Encrypted or password-locked PDFs are not supported. Unlock or re-export the file in another app, then try again.",
+  },
+  {
+    icon: Minimize2,
+    title: "Compression scope",
+    description:
+      "Compress re-encodes embedded photos inside a PDF. Text-only or already-optimized files may barely shrink. That is expected, not a bug.",
+  },
+  {
+    icon: FileWarning,
+    title: "Damaged or unusual files",
+    description:
+      "Corrupt PDFs, broken images, or non-standard exports often fail with “Processing failed.” Re-save from the original app and upload again.",
+  },
+  {
+    icon: Laptop,
+    title: "PDF to image runs locally",
+    description:
+      "Page export uses your browser, not the server. Very large PDFs or many pages can run out of memory. Try a smaller file or split the document first.",
+  },
+];
 
 export function LandingTrustSection() {
   return (
@@ -80,7 +138,7 @@ export function LandingTrustSection() {
         </h2>
         <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl mx-auto">
           Simple PDF tools should not cost your privacy. Pdfer is built to be
-          stateless — no accounts, no database, and no keeping your documents
+          stateless: no accounts, no database, and no keeping your documents
           after the job finishes.
         </p>
       </div>
@@ -89,7 +147,7 @@ export function LandingTrustSection() {
         {pillars.map(({ icon: Icon, title, description }) => (
           <li
             key={title}
-            className="flex gap-3 rounded-xl bg-card border border-border p-4 shadow-sm"
+            className="flex gap-3 rounded-xl bg-card border border-border p-4"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Icon className="h-5 w-5" aria-hidden />
@@ -129,6 +187,42 @@ export function LandingTrustSection() {
             </li>
           ))}
         </ol>
+      </div>
+
+      <div
+        className="max-w-3xl mx-auto mt-10 md:mt-12 pt-10 md:pt-12 border-t border-border"
+        aria-labelledby="guidelines-heading"
+      >
+        <div className="text-center space-y-2 mb-6 md:mb-8">
+          <h3
+            id="guidelines-heading"
+            className="text-sm font-semibold"
+          >
+            Guidelines & limits
+          </h3>
+          <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+            If an upload or job fails, it is usually for one of the reasons
+            below. Check these before retrying.
+          </p>
+        </div>
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 max-w-4xl mx-auto">
+          {guidelines.map(({ icon: Icon, title, description }) => (
+            <li
+              key={title}
+              className="flex gap-3 rounded-xl bg-card border border-border p-4"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-info/10 text-info">
+                <Icon className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <h4 className="text-sm font-semibold leading-tight">{title}</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {description}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

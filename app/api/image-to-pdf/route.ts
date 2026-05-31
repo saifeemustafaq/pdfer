@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildPdfFromImages } from "@/lib/services/image-to-pdf";
 import { OUTPUT_FILENAMES } from "@/lib/constants";
-import { isAcceptedImageMime } from "@/lib/file-utils";
+import {
+  getUploadSizeError,
+  isAcceptedJpegPngMime,
+} from "@/lib/file-utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,6 +19,8 @@ export async function POST(request: NextRequest) {
     }
 
     const buffers: Buffer[] = [];
+    let totalSize = 0;
+
     for (const entry of imageEntries) {
       if (!(entry instanceof File)) {
         return NextResponse.json(
@@ -23,13 +28,20 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      if (!isAcceptedImageMime(entry.type)) {
+      if (!isAcceptedJpegPngMime(entry.type)) {
         return NextResponse.json(
           { error: "Only JPEG and PNG images are accepted" },
           { status: 400 }
         );
       }
-      buffers.push(Buffer.from(await entry.arrayBuffer()));
+      const buffer = Buffer.from(await entry.arrayBuffer());
+      totalSize += buffer.byteLength;
+      buffers.push(buffer);
+    }
+
+    const sizeError = getUploadSizeError(totalSize);
+    if (sizeError) {
+      return NextResponse.json({ error: sizeError }, { status: 413 });
     }
 
     const pdf = await buildPdfFromImages(buffers);

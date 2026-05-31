@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { compressPdf } from "@/lib/services/pdf-compressor";
 import { OUTPUT_FILENAMES } from "@/lib/constants";
-import { isPdfBuffer, isQualityPreset } from "@/lib/file-utils";
+import {
+  getUploadSizeError,
+  isPdfBuffer,
+  isQualityPreset,
+} from "@/lib/file-utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +25,11 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await fileEntry.arrayBuffer());
+
+    const sizeError = getUploadSizeError(buffer.byteLength);
+    if (sizeError) {
+      return NextResponse.json({ error: sizeError }, { status: 413 });
+    }
 
     if (!isPdfBuffer(buffer)) {
       return NextResponse.json(

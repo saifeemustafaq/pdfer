@@ -42,7 +42,7 @@ export async function compressPdf(
         pdfObject.dict.set(PDFName.of("Filter"), PDFName.of("DCTDecode"));
       }
     } catch {
-      // Intentionally silent — skip images sharp cannot process
+      // Intentionally silent: skip images sharp cannot process
     }
   }
 

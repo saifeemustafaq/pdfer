@@ -72,7 +72,7 @@ function SortablePageThumb({
       {...listeners}
       className={cn(
         "relative rounded-md overflow-hidden border-2 bg-card touch-none cursor-grab active:cursor-grabbing",
-        isDragging && "z-10 shadow-sm opacity-90 cursor-grabbing",
+        isDragging && "z-10 ring-2 ring-primary/20 opacity-90 cursor-grabbing",
         isRemoved
           ? "border-destructive opacity-40"
           : "border-border hover:border-primary"

@@ -9,7 +9,8 @@ import {
   LockKeyhole,
   Minimize2,
   FileWarning,
-  Laptop,
+  GitBranch,
+  RotateCcw,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,19 +32,19 @@ const pillars: Pillar[] = [
     icon: HardDrive,
     title: "Processed, not stored",
     description:
-      "Each job runs in a stateless server function: your PDF is handled in memory, returned to you, and discarded. Nothing is written to disk for later.",
+      "Each job runs in memory on the server or in a browser worker. Your PDF is returned to you and discarded. Nothing is written to disk for later.",
   },
   {
     icon: Lock,
     title: "HTTPS end to end",
     description:
-      "Uploads and downloads travel over encrypted connections. We do not send your documents to third-party processing APIs.",
+      "When a job uses the server, files upload once over HTTPS. We do not send your documents to third-party processing APIs.",
   },
   {
     icon: Shield,
     title: "Your file is not the product",
     description:
-      "No ads gated behind exports, no “free” tier that harvests uploads. The tool exists to do the job, not to collect your documents.",
+      "No ads gated behind exports, no free tier that harvests uploads. The tool exists to do the job, not to collect your documents.",
   },
 ];
 
@@ -51,24 +52,26 @@ const processingSteps = [
   {
     step: 1,
     title: "You pick files",
-    description: "Files stay in your browser until you start a job.",
+    description:
+      "Files stay in your browser until you start a job. Large files never upload unless the server path is chosen.",
   },
   {
     step: 2,
-    title: "One secure request",
-    description: "When you click Merge, Compress, or Convert, files upload once over HTTPS.",
+    title: "Smart routing",
+    description:
+      "Jobs over 6 MB run on your device. Smaller jobs may use the server or your device. A badge shows which path ran.",
   },
   {
     step: 3,
-    title: "In-memory engine",
+    title: "In-memory processing",
     description:
-      "pdf-lib and sharp rewrite your PDF on the server in RAM: merge pages, re-encode images, or build a new PDF.",
+      "pdf-lib rewrites your PDF in a Web Worker or on the server. Images use canvas locally or sharp on the server.",
   },
   {
     step: 4,
     title: "Download and done",
     description:
-      "You get the result immediately. The server keeps no copy; there is nothing to log in and retrieve later.",
+      "You get the result immediately. The server keeps no copy. There is nothing to log in and retrieve later.",
   },
 ] as const;
 
@@ -81,21 +84,27 @@ type Guideline = {
 const guidelines: Guideline[] = [
   {
     icon: Scale,
-    title: "6 MB per job",
+    title: "Size limits",
     description:
-      "Each upload is capped at 6 MB (total for merge and image-to-PDF, single file for compress and PDF-to-image). This is a hosting limit. You may see “File too large: 6 MB limit” before processing starts.",
+      "Server uploads are capped at 6 MB (Netlify hosting limit). You can stage files up to 15 MB each in the browser. Jobs above 6 MB run on your device automatically. A warning appears when totals pass 5 MB.",
   },
   {
-    icon: Timer,
-    title: "Processing timeout",
+    icon: GitBranch,
+    title: "On your device or on server",
     description:
-      "Large or scan-heavy PDFs can exceed the server time limit. Try fewer files, a smaller export, or compress with the Small file preset first.",
+      "Each job shows a badge: On your device or On server. Under 6 MB, merge and image-to-PDF prefer your device; compress prefers the server. PDF to image always runs locally and never uploads.",
+  },
+  {
+    icon: RotateCcw,
+    title: "Retry another path",
+    description:
+      "If processing fails, you may see Try on the server or Try on your device when the other path is available. Jobs over 6 MB can only run locally. Try fewer or smaller files if local processing runs out of memory.",
   },
   {
     icon: FileType,
     title: "Supported formats",
     description:
-      "Merge: PDF, JPEG, PNG. Compress: PDF only. Image to PDF: JPEG, PNG. PDF to image: PDF only (processed in your browser). Other formats are rejected at the drop zone.",
+      "Merge: PDF, JPEG, PNG. Compress: PDF only. Image to PDF: JPEG, PNG. PDF to image: PDF only (browser export to JPEG or PNG ZIP). Other formats are rejected at the drop zone.",
   },
   {
     icon: LockKeyhole,
@@ -110,16 +119,16 @@ const guidelines: Guideline[] = [
       "Compress re-encodes embedded photos inside a PDF. Text-only or already-optimized files may barely shrink. That is expected, not a bug.",
   },
   {
+    icon: Timer,
+    title: "Processing timeout",
+    description:
+      "Local jobs time out after 120 seconds. Server jobs may also hit Netlify function limits on scan-heavy PDFs. Try fewer files, a smaller export, or the Small file preset first.",
+  },
+  {
     icon: FileWarning,
     title: "Damaged or unusual files",
     description:
-      "Corrupt PDFs, broken images, or non-standard exports often fail with “Processing failed.” Re-save from the original app and upload again.",
-  },
-  {
-    icon: Laptop,
-    title: "PDF to image runs locally",
-    description:
-      "Page export uses your browser, not the server. Very large PDFs or many pages can run out of memory. Try a smaller file or split the document first.",
+      'Corrupt PDFs, broken images, or non-standard exports often fail with "Processing failed." Re-save from the original app and upload again.',
   },
 ];
 
@@ -194,15 +203,12 @@ export function LandingTrustSection() {
         aria-labelledby="guidelines-heading"
       >
         <div className="text-center space-y-2 mb-6 md:mb-8">
-          <h3
-            id="guidelines-heading"
-            className="text-sm font-semibold"
-          >
+          <h3 id="guidelines-heading" className="text-sm font-semibold">
             Guidelines & limits
           </h3>
           <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-            If an upload or job fails, it is usually for one of the reasons
-            below. Check these before retrying.
+            Size caps, routing behavior, and the most common reasons a job
+            fails. Check these before retrying.
           </p>
         </div>
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 max-w-4xl mx-auto">

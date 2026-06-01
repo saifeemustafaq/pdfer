@@ -16,7 +16,8 @@ Baseline rules for structure, reuse, and conventions. Follow these unless there'
 | Theming | `next-themes` (light/dark) | — |
 | Font (sans) | Inter (via `next/font/google`) | — |
 | PDF operations | `pdf-lib` | — |
-| Image normalisation | `sharp` | — |
+| Image normalisation | `sharp` (server) / canvas (browser worker) | — |
+| Local processing | Web Workers (`public/workers/*.mjs`) | — |
 | File upload UX | `react-dropzone` | — |
 | Deployment | Netlify (API routes → Serverless Functions via `@netlify/plugin-nextjs`) | — |
 
@@ -26,10 +27,11 @@ Pdfer is a **stateless tool** — there is no user account, no session, and no d
 
 ### Why pure JavaScript (not Python)
 
-All server-side PDF operations (merge, compress, image-to-PDF) are handled in Node.js. PDF-to-image export and merge page editing run in the browser:
+All server-side PDF operations (merge, compress, image-to-PDF) are handled in Node.js via `lib/services/*`. The browser handles PDF-to-image export, merge page editing, and **local fallback** for jobs over the 6 MB Netlify upload cap:
 
 - **pdf-lib** handles merging PDFs, embedding JPEG/PNG images as pages, rewriting PDF structure for compression, and client-side page reorder/remove.
 - **sharp** (server only) normalises images before embedding (format conversion, EXIF stripping, quality downsampling).
+- **Web Workers + canvas** (browser only) run merge, compress, and image-to-PDF locally when the router selects the device path.
 - **pdfjs-dist** (browser only) rasterises PDF pages for export to JPEG/PNG ZIP.
 - **No Python microservice.** A separate Python backend (e.g. Render + PyMuPDF) would mean separate deploys, CORS config, cold starts, and no Netlify-native hosting. The JS approach achieves 60–80% size reduction on scan-heavy PDFs — the primary use case — without the operational overhead. If print-quality ghostscript-level compression becomes necessary, a Python microservice can be added in a future sprint without touching the frontend.
 
@@ -67,16 +69,37 @@ pdfer/
 │   ├── landing-trust-section.tsx       # Privacy pillars, processing steps, guidelines
 │   ├── quality-slider.tsx              # Compression preset picker
 │   ├── download-button.tsx             # Blob download trigger
+│   ├── processing-badge.tsx            # "On your device" / "On server" badge
+│   ├── processing-fallback.tsx         # Retry UI after local/server failure
+│   ├── upload-size-notice.tsx          # Size warning + hybrid routing context
+│   ├── size-warning.tsx                # Shared size warning copy
 │   ├── top-nav.tsx                     # Desktop nav (all tools + theme toggle)
 │   └── mobile-tab-bar.tsx              # Mobile bottom tabs (Home, Merge, Compress, Convert)
-├── hooks/
-│   └── use-file-processor.ts           # Generic API fetch + toast error handling
 ├── lib/
-│   ├── constants.ts                    # MAX_UPLOAD_BYTES, presets, routes, MIME lists
+│   ├── constants.ts                    # MAX_SERVER_UPLOAD_BYTES, presets, routes, MIME lists
 │   ├── download-client.ts              # triggerBlobDownload() for client downloads
 │   ├── file-utils.ts                   # MIME guards, size validation, filename helpers
 │   ├── pdf-client.ts                   # Browser: reorder/remove PDF pages (pdf-lib)
 │   ├── pdf-export.ts                   # Browser: PDF → image ZIP (pdfjs-dist + jszip)
+│   ├── processing/
+│   │   ├── types.ts                    # ProcessingMode, RoutingDecision, result types
+│   │   ├── preflight.ts                # File summary, lazy PDF page count / encryption
+│   │   ├── router.ts                   # decide(context) → local | server
+│   │   ├── orchestrator.ts             # processMerge(), processImageToPdf(), processCompress()
+│   │   ├── errors.ts                   # LocalProcessingError, ServerProcessingError
+│   │   ├── device-context.ts           # Navigator hints for routing (browser only)
+│   │   ├── local/
+│   │   │   ├── merge.ts                # Browser merge (pdf-lib + canvas for images)
+│   │   │   ├── image-to-pdf.ts         # Browser images → PDF
+│   │   │   ├── compress.ts             # Browser compress (canvas JPEG re-encode)
+│   │   │   └── image-normalize.ts      # Canvas JPEG re-encode (shared)
+│   │   ├── server/
+│   │   │   ├── merge.ts                # fetch POST /api/merge
+│   │   │   ├── image-to-pdf.ts         # fetch POST /api/image-to-pdf
+│   │   │   └── compress.ts             # fetch POST /api/compress
+│   │   └── worker/
+│   │       ├── client.ts               # run*InWorker() with progress + timeout
+│   │       └── merge.worker.ts         # Worker entry (bundled to public/workers/)
 │   ├── services/
 │   │   ├── pdf-merger.ts               # Server: merge PDFs/images (pdf-lib + sharp)
 │   │   ├── pdf-compressor.ts           # Server: re-encode embedded images (pdf-lib + sharp)
@@ -85,6 +108,9 @@ pdfer/
 ├── types/
 │   └── index.ts                        # FileEntry, StagedFileItem, ProcessResult, …
 ├── proxy.ts                            # Next.js 16 request guard (6 MB upload cap on /api/*)
+├── public/
+│   └── workers/
+│       └── merge.worker.mjs            # Bundled merge worker (build:worker)
 ├── DEVELOPER_GUIDE.md                  # Structure and API conventions (this file)
 ├── DESIGN_GUIDE.md                     # Visual language and UI patterns
 ├── netlify.toml                        # Netlify build + @netlify/plugin-nextjs
@@ -299,6 +325,15 @@ API routes return binary PDF data directly via `new NextResponse(buffer, { heade
 ---
 
 ## 13. File processing conventions
+
+### Hybrid processing (client tools)
+
+Tool pages call **`lib/processing/orchestrator.ts` only**, never `/api/*` or Web Workers directly. The orchestrator runs preflight, calls `router.ts`, then either:
+
+- **Local:** `public/workers/merge.worker.mjs` (bundled from `lib/processing/worker/merge.worker.ts`)
+- **Server:** `lib/processing/server/*.ts` → Netlify API routes → `lib/services/*`
+
+On failure, typed errors (`LocalProcessingError`, `ServerProcessingError`) drive `components/processing-fallback.tsx` retry UI. See [PROCESSING_ARCHITECTURE.md](PROCESSING_ARCHITECTURE.md) for routing rules.
 
 ### Service functions
 

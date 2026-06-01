@@ -22,6 +22,12 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://pdfer.netlify.app"),
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

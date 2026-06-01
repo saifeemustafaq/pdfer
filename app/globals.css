@@ -191,3 +191,47 @@
     @apply font-sans;
   }
 }
+
+@layer utilities {
+  /* Mobile tab bar (4rem) + iOS home indicator */
+  .pb-mobile-nav {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+  .bottom-mobile-nav {
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+  .mobile-sticky-cta {
+    position: sticky;
+    z-index: 30;
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+  @media (max-width: 767px) {
+    .mobile-sticky-cta {
+      margin-inline: -1rem;
+      padding: 0.75rem 1rem;
+      background: color-mix(in oklch, var(--background) 95%, transparent);
+      backdrop-filter: blur(8px);
+    }
+  }
+  @media (min-width: 768px) {
+    .mobile-sticky-cta {
+      position: static;
+      bottom: auto;
+      margin-inline: 0;
+      padding: 0;
+      background: transparent;
+      backdrop-filter: none;
+    }
+  }
+}
+
+/* Fixed export sidebar — outside @layer so top offset is never overridden */
+@media (min-width: 1024px) {
+  .fixed-export-sidebar {
+    position: fixed;
+    top: calc(3.5rem + 2rem);
+    width: 280px;
+    z-index: 30;
+    right: max(2rem, calc((100vw - 72rem) / 2 + 2rem));
+  }
+}

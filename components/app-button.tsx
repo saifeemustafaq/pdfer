@@ -19,7 +19,7 @@ export function PrimaryActionButton({ className, ...props }: ButtonProps) {
     <Button
       type="button"
       size="default"
-      className={cn("gap-2 min-h-10", className)}
+      className={cn("gap-2 min-h-12", className)}
       {...props}
     />
   );
@@ -31,7 +31,7 @@ export function SecondaryActionButton({ className, ...props }: ButtonProps) {
       type="button"
       variant="outline"
       size="default"
-      className={cn("gap-2 min-h-10", className)}
+      className={cn("gap-2 min-h-12", className)}
       {...props}
     />
   );
@@ -43,7 +43,7 @@ export function DestructiveActionButton({ className, ...props }: ButtonProps) {
       type="button"
       variant="destructive"
       size="default"
-      className={cn("min-h-10", className)}
+      className={cn("min-h-12", className)}
       {...props}
     />
   );
@@ -59,7 +59,7 @@ export function CardActionLink({ href, children, className }: CardActionLinkProp
   return (
     <Link
       href={href}
-      className={cn(buttonVariants({ size: "default" }), "w-full min-h-10", className)}
+      className={cn(buttonVariants({ size: "default" }), "w-full min-h-12", className)}
     >
       {children}
     </Link>

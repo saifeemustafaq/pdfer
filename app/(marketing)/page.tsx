@@ -38,7 +38,7 @@ const tools = [
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-dvh pt-12 pb-16 md:pt-0 md:pb-0">
+    <div className="flex flex-col min-h-dvh pt-12 pb-mobile-nav md:pt-0 md:pb-0">
       <div className="flex flex-1 flex-col px-4 md:px-6 lg:px-8 py-8 md:py-10 max-w-5xl mx-auto w-full gap-8 md:gap-10">
         {/* Hero */}
         <section className="flex flex-col items-center gap-3 text-center md:flex-row md:items-start md:gap-4 md:text-left md:shrink-0">

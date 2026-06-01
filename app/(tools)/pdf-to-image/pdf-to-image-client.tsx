@@ -15,6 +15,7 @@ import { ImageFormatPicker } from "@/components/image-format-picker";
 import { ProcessingProgress } from "@/components/processing-progress";
 import { DownloadButton } from "@/components/download-button";
 import { ActionButtonGroup } from "@/components/action-button-group";
+import { EmailDeliveryForm } from "@/components/email-delivery-form";
 import {
   MAX_UPLOAD_BYTES,
   OUTPUT_FILENAMES,
@@ -130,7 +131,7 @@ export function PdfToImageClient() {
             </p>
           )}
           <ProcessingProgress key={String(loading)} active={loading} />
-          <div className="sticky bottom-16 md:static md:bottom-auto">
+          <div className="mobile-sticky-cta">
             <PrimaryActionButton
               onClick={handleConvert}
               disabled={loading}
@@ -162,6 +163,15 @@ export function PdfToImageClient() {
               Convert another PDF
             </SecondaryActionButton>
           </ActionButtonGroup>
+
+          <div className="rounded-xl border border-border bg-card p-4">
+            <EmailDeliveryForm
+              inputId="pdf-to-image-email"
+              blob={result}
+              filename={OUTPUT_FILENAMES.pdfToImageZip}
+              toolLabel="PDF export ZIP"
+            />
+          </div>
         </div>
       )}
     </ToolShell>

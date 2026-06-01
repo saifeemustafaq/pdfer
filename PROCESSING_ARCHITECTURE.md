@@ -1,6 +1,6 @@
 # Pdfer — Processing Architecture (Hybrid Local / Server)
 
-> **Status: planning document only.** This hybrid routing design was not implemented. Pdfer today uses server-side API routes for merge/compress/image-to-PDF and browser-only processing for PDF-to-image and merge page editing. See `components/architecture-modal.tsx` on the landing page or `DEVELOPER_GUIDE.md` for the current architecture.
+> **Status: partially implemented.** Merge, compress, and image-to-PDF use hybrid routing via `lib/processing/orchestrator.ts`. PDF-to-image and merge page editing remain browser-only. Compare-all-presets and user preference toggles are backlog (Sprint 6). See `components/architecture-modal.tsx` on the landing page and [HYBRID_PROCESSING_SPRINT.md](HYBRID_PROCESSING_SPRINT.md) for the implementation plan.
 
 This document describes the planned **hybrid processing model** for Pdfer: when work runs in the user's browser vs on Netlify serverless functions, how the app chooses between them, and how compress preview (all three quality presets with sizes before download) fits in.
 
@@ -113,11 +113,14 @@ These override the score matrix.
 |-----------|-----------|-------|
 | PDF → image | Always | **local** |
 | Merge — page reorder/remove | Always | **local** (already after merge blob exists) |
-| Any | `file.size > MAX_UPLOAD_BYTES` (6 MB) | **reject** (both paths) |
-| Any | User pref `always-local` | **local** (fail with message if impossible) |
-| Any | User pref `always-server` | **server** (fail if over limit) |
-| Image → PDF | MIME ∈ `{jpeg, png, webp}` | **local** |
-| Image → PDF | MIME ∈ `{heic, tiff, avif}` | **server** (sharp) unless browser decode confirmed |
+| Any | `totalBytes > MAX_SERVER_UPLOAD_BYTES` (6 MB) | **local only** (server ineligible) |
+| Any | `totalBytes ≤ 6 MB` | Router chooses local or server (Auto) |
+| Any | Local fails and `≤ 6 MB` | Offer **server fallback** once |
+| Any | Local fails and `> 6 MB` | No server fallback; show **split files** guidance |
+| Any | User pref `always-local` | **local** (fail with message if impossible) *(deferred: Sprint 6)* |
+| Any | User pref `always-server` | **server** (fail if over limit) *(deferred: Sprint 6)* |
+| Image → PDF | MIME ∈ `{jpeg, png}` | **local** if browser can decode |
+| Image → PDF | MIME ∈ `{heic, tiff, avif}` | **server** only if `≤ 6 MB`; else error with guidance |
 
 ### 5.2 Soft scoring (when hard rules don't apply)
 

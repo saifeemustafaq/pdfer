@@ -6,6 +6,9 @@ import { cn } from "@/lib/utils";
 type ToolCardProps = {
   href: string;
   icon: LucideIcon;
+  /** Plain-language headline shown prominently on the landing page. */
+  jobLabel: string;
+  /** Technical tool name shown as secondary copy. */
   title: string;
   description: string;
   actionLabel: string;
@@ -16,6 +19,7 @@ type ToolCardProps = {
 export function ToolCard({
   href,
   icon: Icon,
+  jobLabel,
   title,
   description,
   actionLabel,
@@ -50,11 +54,12 @@ export function ToolCard({
               compact ? "text-base" : "text-xl"
             )}
           >
-            {title}
+            {jobLabel}
           </h2>
+          <p className="text-xs text-muted-foreground">{title}</p>
           <p
             className={cn(
-              "text-muted-foreground leading-snug",
+              "text-muted-foreground leading-snug pt-0.5",
               compact ? "text-xs line-clamp-2" : "text-sm leading-relaxed"
             )}
           >

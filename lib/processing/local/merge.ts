@@ -1,8 +1,12 @@
 /** Browser / Worker only */
 
 import { PDFDocument } from "pdf-lib";
-import { ACCEPTED_JPEG_PNG_TYPES } from "../../constants";
-import { normalizeImageToJpeg } from "./image-normalize";
+import { embedImageOnPdfPage } from "@/lib/image-pdf-embed";
+import {
+  DEFAULT_IMAGE_PDF_LAYOUT,
+  type ImagePdfLayoutOptions,
+} from "@/lib/image-pdf-layout";
+import { normalizeImageForEmbed } from "./image-normalize";
 
 export type LocalMergeInput = {
   bytes: Uint8Array;
@@ -21,16 +25,13 @@ function isPdfBytes(bytes: Uint8Array): boolean {
   );
 }
 
-function isJpegPngMime(mime: string): boolean {
-  return (ACCEPTED_JPEG_PNG_TYPES as readonly string[]).includes(mime);
-}
-
 /**
- * Merge an ordered list of PDFs and JPEG/PNG images into a single PDF.
+ * Merge an ordered list of PDFs and images into a single PDF.
  * Port of lib/services/pdf-merger.ts without sharp (browser-safe).
  */
 export async function mergeFilesLocal(
   files: LocalMergeInput[],
+  imageLayout: ImagePdfLayoutOptions = DEFAULT_IMAGE_PDF_LAYOUT,
   onProgress?: LocalMergeProgress
 ): Promise<Uint8Array> {
   const output = await PDFDocument.create();
@@ -45,13 +46,16 @@ export async function mergeFilesLocal(
       const pageIndices = src.getPageIndices();
       const copied = await output.copyPages(src, pageIndices);
       copied.forEach((page) => output.addPage(page));
-    } else if (isJpegPngMime(file.mimeType)) {
-      const { data, width, height } = await normalizeImageToJpeg(file.bytes);
-      const embedded = await output.embedJpg(data);
-      const page = output.addPage([width, height]);
-      page.drawImage(embedded, { x: 0, y: 0, width, height });
     } else {
-      throw new Error(`Unsupported file type: ${file.mimeType}`);
+      const { data, width, height } = await normalizeImageForEmbed(
+        file.bytes,
+        file.mimeType
+      );
+      await embedImageOnPdfPage(
+        output,
+        { data, width, height },
+        imageLayout
+      );
     }
   }
 

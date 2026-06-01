@@ -1,10 +1,15 @@
 import { MAX_SERVER_UPLOAD_BYTES } from "@/lib/constants";
 import type { ProcessingOperation, RoutingContext, RoutingDecision } from "./types";
 
-const EXOTIC_IMAGE_PATTERN = /heic|tiff|avif/i;
+const HEIC_IMAGE_PATTERN = /heic|heif/i;
+const SERVER_ONLY_IMAGE_PATTERN = /tiff|avif/i;
 
-function hasExoticImageMime(mimeTypes: string[]): boolean {
-  return mimeTypes.some((mime) => EXOTIC_IMAGE_PATTERN.test(mime));
+function hasHeicImageMime(mimeTypes: string[]): boolean {
+  return mimeTypes.some((mime) => HEIC_IMAGE_PATTERN.test(mime));
+}
+
+function hasServerOnlyImageMime(mimeTypes: string[]): boolean {
+  return mimeTypes.some((mime) => SERVER_ONLY_IMAGE_PATTERN.test(mime));
 }
 
 function isLowMemoryDevice(deviceMemoryGb?: number): boolean {
@@ -42,14 +47,39 @@ export function decide(context: RoutingContext): RoutingDecision {
     };
   }
 
-  if (operation === "image-to-pdf") {
-    if (hasExoticImageMime(mimeTypes)) {
+  if (operation === "image-to-pdf" || operation === "merge") {
+    if (hasServerOnlyImageMime(mimeTypes)) {
+      if (overServerLimit) {
+        return {
+          mode: "local",
+          reason: "Total size exceeds 6 MB server limit",
+          serverEligible: false,
+        };
+      }
       return {
         mode: "server",
-        reason: "HEIC, TIFF, and AVIF use server processing when under 6 MB",
+        reason: "TIFF and AVIF use server processing when under 6 MB",
         serverEligible: true,
       };
     }
+
+    if (hasHeicImageMime(mimeTypes)) {
+      if (overServerLimit) {
+        return {
+          mode: "local",
+          reason: "HEIC converts on your device when over 6 MB",
+          serverEligible: false,
+        };
+      }
+      return {
+        mode: "server",
+        reason: "HEIC uses server processing when under 6 MB",
+        serverEligible: true,
+      };
+    }
+  }
+
+  if (operation === "image-to-pdf") {
     if (isLowMemoryDevice(deviceMemoryGb)) {
       return {
         mode: "server",

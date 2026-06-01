@@ -1,4 +1,4 @@
-import { Combine, Minimize2, Images, FileImage } from "lucide-react";
+import { Combine, Minimize2, Images, FileImage, LayoutGrid } from "lucide-react";
 import { ToolCard } from "@/components/tool-card";
 import { LandingTrustSection } from "@/components/landing-trust-section";
 import { ArchitectureModal } from "@/components/architecture-modal";
@@ -9,30 +9,42 @@ const tools = [
   {
     href: TOOL_ROUTES.merge,
     icon: Combine,
+    jobLabel: "Make one file",
     title: "Merge PDFs",
     description: "Combine PDFs and images. Reorder files, remove pages.",
-    actionLabel: "Merge files",
+    actionLabel: "Combine files",
   },
   {
     href: TOOL_ROUTES.compress,
     icon: Minimize2,
+    jobLabel: "Shrink for email",
     title: "Compress PDF",
     description: "Reduce file size with three quality presets.",
     actionLabel: "Compress PDF",
   },
   {
+    href: TOOL_ROUTES.editPdf,
+    icon: LayoutGrid,
+    jobLabel: "Fix page order",
+    title: "Edit PDF",
+    description: "Reorder, remove, or rotate pages in one PDF.",
+    actionLabel: "Edit pages",
+  },
+  {
     href: TOOL_ROUTES.imageToPdf,
     icon: Images,
+    jobLabel: "Photos to PDF",
     title: "Image to PDF",
-    description: "Turn JPEG or PNG images into one multi-page PDF.",
-    actionLabel: "Image to PDF",
+    description: "Turn images into a printable multi-page PDF.",
+    actionLabel: "Convert images",
   },
   {
     href: TOOL_ROUTES.pdfToImage,
     icon: FileImage,
+    jobLabel: "PDF to pictures",
     title: "PDF to image",
     description: "Export each page as JPEG or PNG in a ZIP.",
-    actionLabel: "PDF to image",
+    actionLabel: "Export pages",
   },
 ] as const;
 
@@ -50,13 +62,12 @@ export default function Home() {
               PDF tools that work for you
             </h1>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Merge, compress, and convert. No account, no paywall.
+              Private PDF utilities for real tasks: combine, shrink, split, and
+              convert. Mostly on your device, never in our database.
             </p>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              I built Pdfer because basic PDF tasks kept landing behind
-              subscriptions, forced sign-ups, or “free” sites that treat your
-              uploads as the product. Simple tools should stay simple, and
-              leave your documents alone.
+              No account, no paywall. Your files are processed for the job and
+              not kept afterward.
             </p>
           </div>
         </section>
@@ -64,7 +75,7 @@ export default function Home() {
         {/* Tool cards */}
         <section
           aria-label="PDF tools"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-3"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-3"
         >
           {tools.map((tool) => (
             <ToolCard key={tool.href} {...tool} compact />

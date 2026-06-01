@@ -104,7 +104,7 @@ const guidelines: Guideline[] = [
     icon: FileType,
     title: "Supported formats",
     description:
-      "Merge: PDF, JPEG, PNG. Compress: PDF only. Image to PDF: JPEG, PNG. PDF to image: PDF only (browser export to JPEG or PNG ZIP). Other formats are rejected at the drop zone.",
+      "Merge: PDF, JPEG, PNG, WebP, HEIC. Compress: PDF only. Image to PDF: JPEG, PNG, WebP, HEIC. Edit PDF and PDF to image: PDF only (browser). Other formats are rejected at the drop zone.",
   },
   {
     icon: LockKeyhole,

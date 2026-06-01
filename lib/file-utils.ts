@@ -1,4 +1,5 @@
 import {
+  ACCEPTED_CONVERTIBLE_IMAGE_TYPES,
   ACCEPTED_IMAGE_TYPES,
   ACCEPTED_JPEG_PNG_TYPES,
   ACCEPTED_PDF_TYPES,
@@ -31,9 +32,42 @@ export function isAcceptedJpegPngMime(mime: string): boolean {
   return (ACCEPTED_JPEG_PNG_TYPES as readonly string[]).includes(mime);
 }
 
+export function isAcceptedConvertibleImageMime(mime: string): boolean {
+  return (ACCEPTED_CONVERTIBLE_IMAGE_TYPES as readonly string[]).includes(mime);
+}
+
+function sniffImageMime(buffer: Buffer): string | null {
+  if (buffer.length >= 12 && buffer.slice(0, 4).toString("ascii") === "RIFF") {
+    if (buffer.slice(8, 12).toString("ascii") === "WEBP") return "image/webp";
+  }
+  if (buffer.length >= 12) {
+    const ftyp = buffer.slice(4, 8).toString("ascii");
+    if (ftyp === "ftyp") {
+      const brand = buffer.slice(8, 12).toString("ascii");
+      if (brand.startsWith("heic") || brand.startsWith("heix") || brand.startsWith("mif1")) {
+        return "image/heic";
+      }
+    }
+  }
+  return null;
+}
+
+/** Resolve MIME when the browser leaves file.type empty (common on iOS). */
+export function resolveImageMime(mime: string, buffer: Buffer): string {
+  if (mime && mime !== "application/octet-stream") return mime;
+  const sniffed = sniffImageMime(buffer);
+  return sniffed ?? mime;
+}
+
 export function isAcceptedMergeMime(mime: string, buffer: Buffer): boolean {
   if (isPdfBuffer(buffer)) return true;
-  return isAcceptedJpegPngMime(mime);
+  const resolved = resolveImageMime(mime, buffer);
+  return isAcceptedConvertibleImageMime(resolved);
+}
+
+export function isAcceptedImageToPdfMime(mime: string, buffer: Buffer): boolean {
+  const resolved = resolveImageMime(mime, buffer);
+  return isAcceptedConvertibleImageMime(resolved);
 }
 
 export function getUploadSizeError(totalBytes: number): string | null {

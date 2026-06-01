@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mergeFiles } from "@/lib/services/pdf-merger";
 import { OUTPUT_FILENAMES } from "@/lib/constants";
+import { parseImagePdfLayoutFromForm } from "@/lib/image-pdf-layout";
 import {
   getUploadSizeError,
   isAcceptedMergeMime,
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
 
       if (!isAcceptedMergeMime(file.type, buffer)) {
         return NextResponse.json(
-          { error: "Only PDF, JPEG, and PNG files are accepted" },
+          { error: "Only PDF, JPEG, PNG, WebP, and HEIC files are accepted" },
           { status: 400 }
         );
       }
@@ -50,7 +51,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: sizeError }, { status: 413 });
     }
 
-    const merged = await mergeFiles(files);
+    const layoutResult = parseImagePdfLayoutFromForm(formData);
+    if ("error" in layoutResult) {
+      return NextResponse.json({ error: layoutResult.error }, { status: 400 });
+    }
+
+    const merged = await mergeFiles(files, layoutResult);
 
     return new NextResponse(new Uint8Array(merged), {
       status: 200,

@@ -15,21 +15,50 @@ export const MIN_MEANINGFUL_SAVINGS_PERCENT = 5;
 
 export const ACCEPTED_PDF_TYPES = ["application/pdf"] as const;
 
-/** JPEG and PNG only. Used by merge (images), image-to-PDF, and related APIs. */
+/** JPEG and PNG. Decodable in the browser without extra libraries. */
 export const ACCEPTED_JPEG_PNG_TYPES = [
   "image/jpeg",
   "image/jpg",
   "image/png",
 ] as const;
 
-export const ACCEPTED_IMAGE_TYPES = [
-  ...ACCEPTED_JPEG_PNG_TYPES,
+/** WebP and HEIC/HEIF. Server uses sharp; browser uses bitmap or heic2any. */
+export const ACCEPTED_EXTENDED_IMAGE_TYPES = [
   "image/webp",
+  "image/heic",
+  "image/heif",
+] as const;
+
+/** All image types accepted for merge and image-to-PDF. */
+export const ACCEPTED_CONVERTIBLE_IMAGE_TYPES = [
+  ...ACCEPTED_JPEG_PNG_TYPES,
+  ...ACCEPTED_EXTENDED_IMAGE_TYPES,
+] as const;
+
+export const ACCEPTED_IMAGE_TYPES = [
+  ...ACCEPTED_CONVERTIBLE_IMAGE_TYPES,
   "image/gif",
   "image/tiff",
   "image/avif",
-  "image/heic",
 ] as const;
+
+/** react-dropzone accept map for merge and image-to-PDF. */
+export const IMAGE_TOOL_ACCEPT = {
+  "application/pdf": [".pdf"],
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/png": [".png"],
+  "image/webp": [".webp"],
+  "image/heic": [".heic"],
+  "image/heif": [".heif"],
+} as const;
+
+export const IMAGE_TO_PDF_ACCEPT = {
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/png": [".png"],
+  "image/webp": [".webp"],
+  "image/heic": [".heic"],
+  "image/heif": [".heif"],
+} as const;
 
 export const QUALITY_PRESETS = {
   low: { label: "Small file", description: "Aggressive compression, best for email attachments", jpegQuality: 40 },
@@ -54,6 +83,7 @@ export const TOOL_ROUTES = {
   convert: "/convert",
   imageToPdf: "/image-to-pdf",
   pdfToImage: "/pdf-to-image",
+  editPdf: "/edit-pdf",
 } as const;
 
 /** Public source repository (update if the repo moves). */
@@ -64,6 +94,7 @@ export const OUTPUT_FILENAMES = {
   compress: "compressed.pdf",
   imageToPdf: "converted.pdf",
   pdfToImageZip: "pdf-pages.zip",
+  editPdf: "edited.pdf",
 } as const;
 
 export type PdfImageFormat = "jpeg" | "png";

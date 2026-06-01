@@ -20,9 +20,18 @@ import { FileDropzone } from "@/components/file-dropzone";
 import { FileList } from "@/components/file-list";
 import { ProcessingProgress } from "@/components/processing-progress";
 import { HybridProcessingFeedback } from "@/components/hybrid-processing-feedback";
+import {
+  ImagePdfLayoutPanel,
+  resolveImageLayoutForProcessing,
+} from "@/components/image-pdf-layout-panel";
 import { EmailDeliveryForm } from "@/components/email-delivery-form";
+import {
+  DEFAULT_IMAGE_PDF_LAYOUT,
+  MERGE_IMAGE_LAYOUT_DEFAULT,
+  type ImagePdfLayoutOptions as ImagePdfLayout,
+} from "@/lib/image-pdf-layout";
 import type { PageGridSummary } from "@/components/page-grid";
-import { reorderPdfPages } from "@/lib/pdf-client";
+import { exportEditedPdf, type PageEditSpec } from "@/lib/pdf-client";
 import { triggerBlobDownload } from "@/lib/download-client";
 import {
   OUTPUT_FILENAMES,
@@ -30,6 +39,7 @@ import {
   QUALITY_PRESETS,
   QUALITY_PRESET_KEYS,
   UPLOAD_WARN_BYTES,
+  IMAGE_TOOL_ACCEPT,
   type QualityPreset,
 } from "@/lib/constants";
 import {
@@ -53,16 +63,15 @@ const PageGrid = dynamic(
   { ssr: false }
 );
 
-const MERGE_ACCEPT = {
-  "application/pdf": [".pdf"],
-  "image/jpeg": [".jpg", ".jpeg"],
-  "image/png": [".png"],
-};
-
 const MERGE_DEBOUNCE_MS = 400;
 
 function isPdfFile(file: File): boolean {
   return file.type === "application/pdf";
+}
+
+function isImageFile(file: File): boolean {
+  if (file.type.startsWith("image/")) return true;
+  return /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name);
 }
 
 export function MergeClient() {
@@ -77,18 +86,28 @@ export function MergeClient() {
     null
   );
   const [pageSummary, setPageSummary] = useState<PageGridSummary | null>(null);
-  const [orderedKeptIndices, setOrderedKeptIndices] = useState<number[]>([]);
+  const [pageEditSpec, setPageEditSpec] = useState<PageEditSpec | null>(null);
   const [exportBlob, setExportBlob] = useState<Blob | null>(null);
   const [computingExportSize, setComputingExportSize] = useState(false);
   const [quality, setQuality] = useState<QualityPreset>("medium");
+  const [imageLayoutEnabled, setImageLayoutEnabled] = useState(false);
+  const [imageLayout, setImageLayout] = useState<ImagePdfLayout>(
+    MERGE_IMAGE_LAYOUT_DEFAULT
+  );
+
+  const effectiveImageLayout = useMemo(
+    () => resolveImageLayoutForProcessing(imageLayoutEnabled, imageLayout),
+    [imageLayoutEnabled, imageLayout]
+  );
 
   const mergeGenerationRef = useRef(0);
-  const handleOrderedKeptChange = useCallback((indices: number[]) => {
-    setOrderedKeptIndices(indices);
+  const handleEditSpecChange = useCallback((spec: PageEditSpec) => {
+    setPageEditSpec(spec);
   }, []);
   const pendingForceModeRef = useRef<ProcessingMode | undefined>(undefined);
 
   const files = useMemo(() => items.map((item) => item.file), [items]);
+  const hasImages = useMemo(() => files.some(isImageFile), [files]);
   const totalSize = items.reduce((s, i) => s + i.file.size, 0);
   const showWarn = totalSize > UPLOAD_WARN_BYTES;
 
@@ -114,8 +133,10 @@ export function MergeClient() {
           blob = fileItems[0].file;
         } else {
           const orderedFiles = fileItems.map((item) => item.file);
+          const mergeHasImages = orderedFiles.some(isImageFile);
           const result = await processMerge(
             orderedFiles,
+            mergeHasImages ? effectiveImageLayout : DEFAULT_IMAGE_PDF_LAYOUT,
             undefined,
             forceMode ? { forceMode } : undefined
           );
@@ -143,7 +164,7 @@ export function MergeClient() {
         }
       }
     },
-    []
+    [effectiveImageLayout]
   );
 
   useEffect(() => {
@@ -161,16 +182,16 @@ export function MergeClient() {
     }, MERGE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
-  }, [items, runAutoMerge]);
+  }, [items, effectiveImageLayout, runAutoMerge]);
 
   useEffect(() => {
     setExportBlob(null);
-    setOrderedKeptIndices([]);
+    setPageEditSpec(null);
     setPageSummary(null);
   }, [mergedBlob]);
 
   useEffect(() => {
-    if (!mergedBlob || orderedKeptIndices.length === 0) {
+    if (!mergedBlob || !pageEditSpec || pageEditSpec.pageIndicesInOrder.length === 0) {
       setExportBlob(null);
       setComputingExportSize(false);
       return;
@@ -180,7 +201,7 @@ export function MergeClient() {
     const timer = window.setTimeout(async () => {
       setComputingExportSize(true);
       try {
-        const blob = await reorderPdfPages(mergedBlob, orderedKeptIndices);
+        const blob = await exportEditedPdf(mergedBlob, pageEditSpec);
         if (!cancelled) setExportBlob(blob);
       } catch (err) {
         if (!cancelled) {
@@ -196,7 +217,7 @@ export function MergeClient() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [mergedBlob, orderedKeptIndices]);
+  }, [mergedBlob, pageEditSpec]);
 
   const handleDrop = useCallback((accepted: File[]) => {
     setProcessingInfo(null);
@@ -205,7 +226,9 @@ export function MergeClient() {
       ...prev,
       ...accepted.map((f) => ({ id: createStagedFileId("file"), file: f })),
     ]);
-    if (accepted.some((f) => f.type.startsWith("image/"))) {
+    if (accepted.some((f) => /heic|heif/i.test(f.type || f.name))) {
+      toast.info("HEIC converts to JPEG inside the PDF.");
+    } else if (accepted.some((f) => f.type.startsWith("image/"))) {
       toast.info("Images will be compressed to JPEG for embedding");
     }
   }, []);
@@ -218,7 +241,7 @@ export function MergeClient() {
     setFallback(null);
     setPageSummary(null);
     setExportBlob(null);
-    setOrderedKeptIndices([]);
+    setPageEditSpec(null);
   }
 
   function handleFallbackRetry(mode: ProcessingMode) {
@@ -232,12 +255,12 @@ export function MergeClient() {
 
     if (exportBlob) return exportBlob;
 
-    if (orderedKeptIndices.length === 0) {
+    if (!pageEditSpec || pageEditSpec.pageIndicesInOrder.length === 0) {
       toast.error("Keep at least one page.");
       return null;
     }
 
-    return reorderPdfPages(mergedBlob, orderedKeptIndices);
+    return exportEditedPdf(mergedBlob, pageEditSpec);
   }
 
   async function handleDownload() {
@@ -396,18 +419,31 @@ export function MergeClient() {
       {items.length === 0 ? (
         <FileDropzone
           onDrop={handleDrop}
-          accept={MERGE_ACCEPT}
+          accept={IMAGE_TOOL_ACCEPT}
           multiple
           maxSize={LOCAL_SIZE_WARN_BYTES}
           label="Drop PDFs and images here, or click to browse."
-          hint="Accepts PDF, JPEG, PNG · large jobs run on your device"
+          hint="Accepts PDF, JPEG, PNG, WebP, HEIC · large jobs run on your device"
           disabled={busy}
         />
       ) : (
         <div className="relative">
+          {hasImages && (
+            <ImagePdfLayoutPanel
+              placement="sidebar"
+              enabled={imageLayoutEnabled}
+              onEnabledChange={setImageLayoutEnabled}
+              layout={imageLayout}
+              onLayoutChange={setImageLayout}
+              disabled={busy}
+              helperText="Applies to image files only. PDF pages stay their original size."
+            />
+          )}
+
           <div
             className={cn(
               "space-y-6 min-w-0 lg:pr-[296px]",
+              hasImages && "lg:pl-[296px]",
               mergedBlob && "max-lg:pb-96"
             )}
           >
@@ -444,17 +480,18 @@ export function MergeClient() {
               <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,300px)_1fr] gap-3 items-stretch">
                 <FileDropzone
                   onDrop={handleDrop}
-                  accept={MERGE_ACCEPT}
+                  accept={IMAGE_TOOL_ACCEPT}
                   multiple
                   maxSize={LOCAL_SIZE_WARN_BYTES}
                   compact
                   fillHeight
                   label="Add files"
-                  hint="PDF, JPEG, PNG"
+                  hint="PDF, JPEG, PNG, WebP, HEIC"
                   disabled={busy}
                 />
                 <FileList items={items} onReorder={setItems} />
               </div>
+
             </div>
 
             {mergedBlob ? (
@@ -480,7 +517,7 @@ export function MergeClient() {
                   pdfBlob={mergedBlob}
                   externalActions
                   onSummaryChange={setPageSummary}
-                  onOrderedKeptChange={handleOrderedKeptChange}
+                  onEditSpecChange={handleEditSpecChange}
                 />
               </div>
             ) : (

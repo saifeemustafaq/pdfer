@@ -225,7 +225,7 @@
   }
 }
 
-/* Fixed export sidebar — outside @layer so top offset is never overridden */
+/* Fixed tool sidebars — outside @layer so top offset is never overridden */
 @media (min-width: 1024px) {
   .fixed-export-sidebar {
     position: fixed;
@@ -233,5 +233,13 @@
     width: 280px;
     z-index: 30;
     right: max(2rem, calc((100vw - 72rem) / 2 + 2rem));
+  }
+
+  .fixed-layout-sidebar {
+    position: fixed;
+    top: calc(3.5rem + 2rem);
+    width: 280px;
+    z-index: 30;
+    left: max(2rem, calc((100vw - 72rem) / 2 + 2rem));
   }
 }

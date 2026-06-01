@@ -1,13 +1,19 @@
 import "server-only";
-import { PDFDocument } from "pdf-lib";
 import sharp from "sharp";
+import {
+  DEFAULT_IMAGE_PDF_LAYOUT,
+  type ImagePdfLayoutOptions,
+} from "@/lib/image-pdf-layout";
+import { buildPdfFromNormalizedImages } from "@/lib/image-pdf-embed";
 
 /**
  * Convert an ordered list of images to a multi-page PDF.
- * Each image becomes one page sized to its natural dimensions.
  */
-export async function buildPdfFromImages(images: Buffer[]): Promise<Buffer> {
-  const output = await PDFDocument.create();
+export async function buildPdfFromImages(
+  images: Buffer[],
+  layout: ImagePdfLayoutOptions = DEFAULT_IMAGE_PDF_LAYOUT
+): Promise<Buffer> {
+  const normalized = [];
 
   for (const imgBuffer of images) {
     const { data, info } = await sharp(imgBuffer)
@@ -15,12 +21,13 @@ export async function buildPdfFromImages(images: Buffer[]): Promise<Buffer> {
       .toFormat("jpeg", { quality: 90 })
       .toBuffer({ resolveWithObject: true });
 
-    const { width, height } = info;
-    const embedded = await output.embedJpg(data);
-    const page = output.addPage([width, height]);
-    page.drawImage(embedded, { x: 0, y: 0, width, height });
+    normalized.push({
+      data: new Uint8Array(data),
+      width: info.width,
+      height: info.height,
+    });
   }
 
-  const bytes = await output.save();
+  const bytes = await buildPdfFromNormalizedImages(normalized, layout);
   return Buffer.from(bytes);
 }

@@ -13,12 +13,21 @@ import { FileDropzone } from "@/components/file-dropzone";
 import { FileList } from "@/components/file-list";
 import { ProcessingBadge } from "@/components/processing-badge";
 import { HybridProcessingFeedback } from "@/components/hybrid-processing-feedback";
+import {
+  ImagePdfLayoutPanel,
+  resolveImageLayoutForProcessing,
+} from "@/components/image-pdf-layout-panel";
 import { ToolResultFooter } from "@/components/tool-result-footer";
+import {
+  MERGE_IMAGE_LAYOUT_DEFAULT,
+  type ImagePdfLayoutOptions as ImagePdfLayout,
+} from "@/lib/image-pdf-layout";
 import {
   OUTPUT_FILENAMES,
   LOCAL_SIZE_WARN_BYTES,
   TOOL_ROUTES,
   UPLOAD_WARN_BYTES,
+  IMAGE_TO_PDF_ACCEPT,
 } from "@/lib/constants";
 import { createStagedFileId, formatBytes } from "@/lib/file-utils";
 import { triggerBlobDownload } from "@/lib/download-client";
@@ -32,11 +41,6 @@ import { useRoutingBadge } from "@/lib/processing/use-routing-badge";
 import type { ProcessingInfo, ProcessingMode } from "@/lib/processing/types";
 import type { StagedFileItem } from "@/types";
 
-const IMAGE_ACCEPT = {
-  "image/jpeg": [".jpg", ".jpeg"],
-  "image/png": [".png"],
-};
-
 export function ImageToPdfClient() {
   const [items, setItems] = useState<StagedFileItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,6 +50,13 @@ export function ImageToPdfClient() {
   );
   const [fallback, setFallback] = useState<ProcessingFallbackVariant | null>(
     null
+  );
+  const [imageLayoutEnabled, setImageLayoutEnabled] = useState(false);
+  const [layout, setLayout] = useState<ImagePdfLayout>(MERGE_IMAGE_LAYOUT_DEFAULT);
+
+  const effectiveLayout = useMemo(
+    () => resolveImageLayoutForProcessing(imageLayoutEnabled, layout),
+    [imageLayoutEnabled, layout]
   );
 
   const files = useMemo(() => items.map((item) => item.file), [items]);
@@ -61,6 +72,9 @@ export function ImageToPdfClient() {
       ...prev,
       ...files.map((f) => ({ id: createStagedFileId("img"), file: f })),
     ]);
+    if (files.some((f) => /heic|heif/i.test(f.type || f.name))) {
+      toast.info("HEIC converts to JPEG inside the PDF.");
+    }
   }, []);
 
   async function handleConvert(forceMode?: ProcessingMode) {
@@ -74,6 +88,7 @@ export function ImageToPdfClient() {
     try {
       const output = await processImageToPdf(
         files,
+        effectiveLayout,
         undefined,
         forceMode ? { forceMode } : undefined
       );
@@ -116,12 +131,12 @@ export function ImageToPdfClient() {
       </Link>
       <FileDropzone
         onDrop={handleDrop}
-        accept={IMAGE_ACCEPT}
+        accept={IMAGE_TO_PDF_ACCEPT}
         multiple
         maxSize={LOCAL_SIZE_WARN_BYTES}
         compact={items.length > 0}
         label="Drop images here, or click to browse."
-        hint="Accepts JPEG, PNG · large jobs run on your device"
+        hint="Accepts JPEG, PNG, WebP, HEIC · large jobs run on your device"
         disabled={loading}
       />
 
@@ -151,6 +166,15 @@ export function ImageToPdfClient() {
             progressKey={String(loading)}
           />
           <FileList items={items} onReorder={setItems} />
+
+          <ImagePdfLayoutPanel
+            placement="inline"
+            enabled={imageLayoutEnabled}
+            onEnabledChange={setImageLayoutEnabled}
+            layout={layout}
+            onLayoutChange={setLayout}
+            disabled={loading}
+          />
 
           <div className="mobile-sticky-cta">
             <PrimaryActionButton

@@ -16,6 +16,10 @@ import { buildRoutingContext, decide } from "./router";
 import { compressPdfOnServer } from "./server/compress";
 import { buildPdfFromImagesOnServer } from "./server/image-to-pdf";
 import { mergeFilesOnServer } from "./server/merge";
+import {
+  DEFAULT_IMAGE_PDF_LAYOUT,
+  type ImagePdfLayoutOptions,
+} from "@/lib/image-pdf-layout";
 import type { ProcessingMode, RoutingDecision } from "./types";
 import {
   runCompressInWorker,
@@ -84,17 +88,19 @@ function wrapServerError(err: unknown, totalBytes: number): never {
 
 async function runLocalMerge(
   files: File[],
+  imageLayout: ImagePdfLayoutOptions,
   onProgress?: WorkerJobProgress
 ): Promise<Blob> {
-  const pdf = await runMergeInWorker(files, onProgress);
+  const pdf = await runMergeInWorker(files, imageLayout, onProgress);
   return new Blob([new Uint8Array(pdf)], { type: "application/pdf" });
 }
 
 async function runLocalImageToPdf(
   files: File[],
+  layout: ImagePdfLayoutOptions,
   onProgress?: WorkerJobProgress
 ): Promise<Blob> {
-  const pdf = await runImageToPdfInWorker(files, onProgress);
+  const pdf = await runImageToPdfInWorker(files, layout, onProgress);
   return new Blob([new Uint8Array(pdf)], { type: "application/pdf" });
 }
 
@@ -115,6 +121,7 @@ function toSavingsPercent(originalSize: number, compressedSize: number): number 
 /** Merge PDFs and images via local worker or server API. */
 export async function processMerge(
   files: File[],
+  imageLayout: ImagePdfLayoutOptions = DEFAULT_IMAGE_PDF_LAYOUT,
   onProgress?: WorkerJobProgress,
   options?: ProcessForceOptions
 ): Promise<ProcessOutput> {
@@ -123,7 +130,7 @@ export async function processMerge(
 
   if (decision.mode === "server") {
     try {
-      const blob = await mergeFilesOnServer(files);
+      const blob = await mergeFilesOnServer(files, imageLayout);
       return { blob, mode: "server", reason: decision.reason };
     } catch (err) {
       if (err instanceof ServerProcessingError) throw err;
@@ -132,7 +139,7 @@ export async function processMerge(
   }
 
   try {
-    const blob = await runLocalMerge(files, onProgress);
+    const blob = await runLocalMerge(files, imageLayout, onProgress);
     return { blob, mode: "local", reason: decision.reason };
   } catch (err) {
     if (err instanceof LocalProcessingError) throw err;
@@ -143,6 +150,7 @@ export async function processMerge(
 /** Convert images to PDF via local worker or server API. */
 export async function processImageToPdf(
   files: File[],
+  layout: ImagePdfLayoutOptions = DEFAULT_IMAGE_PDF_LAYOUT,
   onProgress?: WorkerJobProgress,
   options?: ProcessForceOptions
 ): Promise<ProcessOutput> {
@@ -151,7 +159,7 @@ export async function processImageToPdf(
 
   if (decision.mode === "server") {
     try {
-      const blob = await buildPdfFromImagesOnServer(files);
+      const blob = await buildPdfFromImagesOnServer(files, layout);
       return { blob, mode: "server", reason: decision.reason };
     } catch (err) {
       if (err instanceof ServerProcessingError) throw err;
@@ -160,7 +168,7 @@ export async function processImageToPdf(
   }
 
   try {
-    const blob = await runLocalImageToPdf(files, onProgress);
+    const blob = await runLocalImageToPdf(files, layout, onProgress);
     return { blob, mode: "local", reason: decision.reason };
   } catch (err) {
     if (err instanceof LocalProcessingError) throw err;

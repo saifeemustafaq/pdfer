@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildPdfFromImages } from "@/lib/services/image-to-pdf";
 import { OUTPUT_FILENAMES } from "@/lib/constants";
+import { parseImagePdfLayoutFromForm } from "@/lib/image-pdf-layout";
 import {
   getUploadSizeError,
-  isAcceptedJpegPngMime,
+  isAcceptedImageToPdfMime,
   readFormFile,
 } from "@/lib/file-utils";
 
@@ -29,9 +30,9 @@ export async function POST(request: NextRequest) {
       }
 
       const { file, buffer } = parsed;
-      if (!isAcceptedJpegPngMime(file.type)) {
+      if (!isAcceptedImageToPdfMime(file.type, buffer)) {
         return NextResponse.json(
-          { error: "Only JPEG and PNG images are accepted" },
+          { error: "Only JPEG, PNG, WebP, and HEIC images are accepted" },
           { status: 400 }
         );
       }
@@ -44,7 +45,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: sizeError }, { status: 413 });
     }
 
-    const pdf = await buildPdfFromImages(buffers);
+    const layoutResult = parseImagePdfLayoutFromForm(formData);
+    if ("error" in layoutResult) {
+      return NextResponse.json({ error: layoutResult.error }, { status: 400 });
+    }
+
+    const pdf = await buildPdfFromImages(buffers, layoutResult);
 
     return new NextResponse(new Uint8Array(pdf), {
       status: 200,

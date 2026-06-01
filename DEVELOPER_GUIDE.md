@@ -50,7 +50,8 @@ pdfer/
 │   │   ├── merge/                      # Merge PDFs + images; client page reorder step
 │   │   ├── compress/                   # Compress PDF with quality presets
 │   │   ├── convert/                    # Hub linking image-to-PDF and PDF-to-image
-│   │   ├── image-to-pdf/               # Images → multi-page PDF (server)
+│   │   ├── edit-pdf/                   # Reorder, remove, rotate pages (browser only)
+│   │   ├── image-to-pdf/               # Images → multi-page PDF (hybrid)
 │   │   └── pdf-to-image/               # PDF pages → ZIP of images (browser)
 │   ├── api/
 │   │   ├── merge/route.ts              # POST multipart: PDFs + images → merged PDF
@@ -66,7 +67,8 @@ pdfer/
 │   ├── architecture-modal.tsx          # Landing-page developer architecture dialog
 │   ├── file-dropzone.tsx               # react-dropzone wrapper (all tools)
 │   ├── file-list.tsx                   # Drag-to-reorder staged files
-│   ├── page-grid.tsx                   # Merge: thumbnail grid, reorder/remove pages
+│   ├── page-grid.tsx                   # Thumbnail grid: reorder, remove, rotate pages
+│   ├── image-pdf-layout-options.tsx    # Image-to-PDF: native vs fit-to-page controls
 │   ├── landing-trust-section.tsx       # Privacy pillars, processing steps, guidelines
 │   ├── quality-slider.tsx              # Compression preset picker
 │   ├── download-button.tsx             # Blob download trigger
@@ -85,7 +87,9 @@ pdfer/
 │   ├── email-client.ts                 # sendResultByEmail() → POST /api/send-result
 │   ├── email-utils.ts                  # Email validation helpers
 │   ├── file-utils.ts                   # MIME guards, size validation, staged IDs, readFormFile()
-│   ├── pdf-client.ts                   # Browser: reorder/remove PDF pages (pdf-lib)
+│   ├── pdf-client.ts                   # Browser: exportEditedPdf (reorder/remove/rotate)
+│   ├── image-pdf-layout.ts             # Shared page size / margin layout math
+│   ├── image-pdf-embed.ts              # Embed normalized JPEG onto PDF pages
 │   ├── pdf-export.ts                   # Browser: PDF → image ZIP (pdfjs-dist + jszip)
 │   ├── processing/
 │   │   ├── types.ts                    # ProcessingMode, RoutingDecision, result types

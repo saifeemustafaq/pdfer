@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Combine, Minimize2, Images, FileImage } from "lucide-react";
+import { Combine, Minimize2, Images, FileImage, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TOOL_ROUTES } from "@/lib/constants";
@@ -10,6 +10,7 @@ import { TOOL_ROUTES } from "@/lib/constants";
 const toolLinks = [
   { href: TOOL_ROUTES.merge, label: "Merge", icon: Combine },
   { href: TOOL_ROUTES.compress, label: "Compress", icon: Minimize2 },
+  { href: TOOL_ROUTES.editPdf, label: "Edit PDF", icon: LayoutGrid },
   { href: TOOL_ROUTES.imageToPdf, label: "Image to PDF", icon: Images },
   { href: TOOL_ROUTES.pdfToImage, label: "PDF to image", icon: FileImage },
 ] as const;

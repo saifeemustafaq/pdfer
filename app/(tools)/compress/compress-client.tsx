@@ -5,20 +5,16 @@ import { Minimize2, Loader2, CheckCircle2, X, FileText } from "lucide-react";
 import { toast } from "sonner";
 import {
   PrimaryActionButton,
-  SecondaryActionButton,
   IconTouchButton,
 } from "@/components/app-button";
 import { Badge } from "@/components/ui/badge";
 import { ToolShell } from "@/components/tool-shell";
 import { FileDropzone } from "@/components/file-dropzone";
-import { DownloadButton } from "@/components/download-button";
-import { ActionButtonGroup } from "@/components/action-button-group";
 import { QualitySlider } from "@/components/quality-slider";
 import { ProcessingProgress } from "@/components/processing-progress";
 import { ProcessingBadge } from "@/components/processing-badge";
-import { ProcessingFallback } from "@/components/processing-fallback";
-import { UploadSizeNotice } from "@/components/upload-size-notice";
-import { EmailDeliveryForm } from "@/components/email-delivery-form";
+import { HybridProcessingFeedback } from "@/components/hybrid-processing-feedback";
+import { ToolResultFooter } from "@/components/tool-result-footer";
 import {
   LOCAL_SIZE_WARN_BYTES,
   MIN_MEANINGFUL_SAVINGS_PERCENT,
@@ -33,9 +29,8 @@ import {
   type ProcessingFallbackVariant,
 } from "@/lib/processing/errors";
 import { processCompress } from "@/lib/processing/orchestrator";
-import { buildRoutingContext, decide } from "@/lib/processing/router";
-import { getDeviceHints } from "@/lib/processing/device-context";
-import type { ProcessingMode } from "@/lib/processing/types";
+import { useRoutingBadge } from "@/lib/processing/use-routing-badge";
+import type { ProcessingInfo, ProcessingMode } from "@/lib/processing/types";
 
 type CompressionResult = {
   blob: Blob;
@@ -43,11 +38,6 @@ type CompressionResult = {
   compressedSize: number;
   filename: string;
   savingsPercent: number;
-};
-
-type ProcessingInfo = {
-  mode: ProcessingMode;
-  reason: string;
 };
 
 export function CompressClient() {
@@ -65,13 +55,7 @@ export function CompressClient() {
 
   const files = useMemo(() => (file ? [file] : []), [file]);
   const showWarn = file ? file.size > UPLOAD_WARN_BYTES : false;
-
-  const routingDecision = useMemo(() => {
-    if (!file) return null;
-    return decide(buildRoutingContext("compress", [file], getDeviceHints()));
-  }, [file]);
-
-  const badgeInfo = processingInfo ?? routingDecision;
+  const badgeInfo = useRoutingBadge("compress", files, processingInfo);
 
   const handleDrop = useCallback((files: File[]) => {
     setFile(files[0] ?? null);
@@ -175,31 +159,18 @@ export function CompressClient() {
 
       {file && !result && (
         <>
-          <UploadSizeNotice
+          <QualitySlider value={quality} onChange={setQuality} />
+          <HybridProcessingFeedback
             operation="compress"
             files={files}
             showWarn={showWarn}
+            processingInfo={badgeInfo}
+            fallback={fallback}
+            active={loading}
+            onRetryServer={() => handleCompress("server")}
+            onRetryLocal={() => handleCompress("local")}
+            progressKey={String(loading)}
           />
-          <QualitySlider value={quality} onChange={setQuality} />
-
-          {(loading || processingInfo) && badgeInfo && (
-            <ProcessingBadge mode={badgeInfo.mode} reason={badgeInfo.reason} />
-          )}
-
-          {fallback && (
-            <ProcessingFallback
-              variant={fallback}
-              onAction={
-                fallback === "try-server"
-                  ? () => handleCompress("server")
-                  : fallback === "try-local"
-                    ? () => handleCompress("local")
-                    : undefined
-              }
-            />
-          )}
-
-          <ProcessingProgress key={String(loading)} active={loading} />
           <div className="mobile-sticky-cta">
             <PrimaryActionButton
               onClick={() => handleCompress()}
@@ -260,25 +231,14 @@ export function CompressClient() {
 
           <ProcessingProgress active={false} success={done} />
 
-          <ActionButtonGroup>
-            <DownloadButton
-              blob={result.blob}
-              filename={result.filename}
-              label="Download"
-            />
-            <SecondaryActionButton type="button" onClick={handleClear}>
-              Compress another
-            </SecondaryActionButton>
-          </ActionButtonGroup>
-
-          <div className="rounded-xl border border-border bg-card p-4">
-            <EmailDeliveryForm
-              inputId="compress-email"
-              blob={result.blob}
-              filename={result.filename}
-              toolLabel="compressed PDF"
-            />
-          </div>
+          <ToolResultFooter
+            blob={result.blob}
+            downloadFilename={result.filename}
+            secondaryLabel="Compress another"
+            onSecondary={handleClear}
+            emailInputId="compress-email"
+            toolLabel="compressed PDF"
+          />
         </div>
       )}
     </ToolShell>

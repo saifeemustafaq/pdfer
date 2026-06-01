@@ -41,8 +41,9 @@ export async function compressPdf(
         );
         pdfObject.dict.set(PDFName.of("Filter"), PDFName.of("DCTDecode"));
       }
-    } catch {
-      // Intentionally silent: skip images sharp cannot process
+    } catch (err) {
+      // Skip images sharp cannot process (unsupported or corrupt XObjects)
+      void err;
     }
   }
 

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mergeFiles } from "@/lib/services/pdf-merger";
 import { OUTPUT_FILENAMES } from "@/lib/constants";
+import { parseImagePdfLayoutFromForm } from "@/lib/image-pdf-layout";
 import {
   getUploadSizeError,
   isAcceptedMergeMime,
+  readFormFile,
 } from "@/lib/file-utils";
 import type { FileEntry } from "@/types";
 
@@ -23,26 +25,24 @@ export async function POST(request: NextRequest) {
     let totalSize = 0;
 
     for (const entry of entries) {
-      if (!(entry instanceof File)) {
-        return NextResponse.json(
-          { error: "Invalid file upload." },
-          { status: 400 }
-        );
+      const parsed = await readFormFile(entry);
+      if ("error" in parsed) {
+        return NextResponse.json({ error: parsed.error }, { status: 400 });
       }
 
-      const buffer = Buffer.from(await entry.arrayBuffer());
+      const { file, buffer } = parsed;
       totalSize += buffer.byteLength;
 
-      if (!isAcceptedMergeMime(entry.type, buffer)) {
+      if (!isAcceptedMergeMime(file.type, buffer)) {
         return NextResponse.json(
-          { error: "Only PDF, JPEG, and PNG files are accepted" },
+          { error: "Only PDF, JPEG, PNG, WebP, and HEIC files are accepted" },
           { status: 400 }
         );
       }
 
       files.push({
         buffer,
-        mimetype: entry.type,
+        mimetype: file.type,
       });
     }
 
@@ -51,7 +51,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: sizeError }, { status: 413 });
     }
 
-    const merged = await mergeFiles(files);
+    const layoutResult = parseImagePdfLayoutFromForm(formData);
+    if ("error" in layoutResult) {
+      return NextResponse.json({ error: layoutResult.error }, { status: 400 });
+    }
+
+    const merged = await mergeFiles(files, layoutResult);
 
     return new NextResponse(new Uint8Array(merged), {
       status: 200,

@@ -1,6 +1,6 @@
 # Pdfer — Processing Architecture (Hybrid Local / Server)
 
-> **Status: partially implemented.** Merge, compress, and image-to-PDF use hybrid routing via `lib/processing/orchestrator.ts`. PDF-to-image and merge page editing remain browser-only. Compare-all-presets and user preference toggles are backlog (Sprint 6). See `components/architecture-modal.tsx` on the landing page and [HYBRID_PROCESSING_SPRINT.md](HYBRID_PROCESSING_SPRINT.md) for the implementation plan.
+> **Status: hybrid routing implemented** for merge, compress, and image-to-PDF via `lib/processing/orchestrator.ts`. **Edit PDF** (`/edit-pdf`), PDF-to-image, and merge page editing are browser-only. Image-to-PDF supports **native** or **fit-to-page** layout (`lib/image-pdf-layout.ts`). Merge and image-to-PDF accept JPEG, PNG, WebP, and HEIC (HEIC uses `heic2any` locally when over 6 MB). Compare-all-presets and user preference toggles remain backlog (Sprint 6).
 
 This document describes the planned **hybrid processing model** for Pdfer: when work runs in the user's browser vs on Netlify serverless functions, how the app chooses between them, and how compress preview (all three quality presets with sizes before download) fits in.
 
@@ -32,9 +32,10 @@ Read this before implementation. It pairs with [DEVELOPER_GUIDE.md](DEVELOPER_GU
 | Tool | Processing location | Libraries | API route |
 |------|---------------------|-----------|-----------|
 | Merge — combine files | **Server** | `pdf-lib`, `sharp` | `POST /api/merge` |
-| Merge — reorder / remove pages | **Local** | `pdf-lib` (`lib/pdf-client.ts`) | — |
-| Compress — single preset | **Server** | `pdf-lib`, `sharp` | `POST /api/compress` |
-| Image → PDF | **Server** | `pdf-lib`, `sharp` | `POST /api/image-to-pdf` |
+| Merge — reorder / remove / rotate pages | **Local** | `pdf-lib` (`lib/pdf-client.ts`) | — |
+| Edit PDF — reorder / remove / rotate | **Local** | `pdf-lib`, `pdfjs-dist` (thumbs) | — |
+| Compress — single preset | **Hybrid** | `pdf-lib`, `sharp` / worker | `POST /api/compress` |
+| Image → PDF | **Hybrid** | `pdf-lib`, `sharp` / worker, layout options | `POST /api/image-to-pdf` |
 | PDF → image (ZIP) | **Local** | `pdfjs-dist`, `jszip` | — |
 
 ### Current constraints

@@ -1,14 +1,21 @@
 import "server-only";
 import { PDFDocument } from "pdf-lib";
 import sharp from "sharp";
+import { embedImageOnPdfPage } from "@/lib/image-pdf-embed";
+import {
+  DEFAULT_IMAGE_PDF_LAYOUT,
+  type ImagePdfLayoutOptions,
+} from "@/lib/image-pdf-layout";
 import type { FileEntry } from "@/types";
 import { isPdfBuffer } from "@/lib/file-utils";
 
 /**
  * Merge an ordered list of files (PDFs or images) into a single PDF.
- * Each image becomes one page sized to its natural dimensions.
  */
-export async function mergeFiles(files: FileEntry[]): Promise<Buffer> {
+export async function mergeFiles(
+  files: FileEntry[],
+  imageLayout: ImagePdfLayoutOptions = DEFAULT_IMAGE_PDF_LAYOUT
+): Promise<Buffer> {
   const output = await PDFDocument.create();
 
   for (const file of files) {
@@ -23,10 +30,15 @@ export async function mergeFiles(files: FileEntry[]): Promise<Buffer> {
         .toFormat("jpeg", { quality: 90 })
         .toBuffer({ resolveWithObject: true });
 
-      const { width, height } = info;
-      const embedded = await output.embedJpg(data);
-      const page = output.addPage([width, height]);
-      page.drawImage(embedded, { x: 0, y: 0, width, height });
+      await embedImageOnPdfPage(
+        output,
+        {
+          data: new Uint8Array(data),
+          width: info.width,
+          height: info.height,
+        },
+        imageLayout
+      );
     }
   }
 

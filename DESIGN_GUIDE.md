@@ -288,7 +288,7 @@ File processing can take several seconds on large PDFs. The UI must not look fro
 
 - Height: `h-14` (56px). Background: `bg-background/80` with `backdrop-blur-sm`. Bottom border: `border-b border-border`.
 - Left: logo + app name ("Pdfer") in `font-semibold`. Clicking navigates to `/`.
-- Center (or right of logo): nav links — Merge, Compress, Image to PDF, PDF to image.
+- Center (or right of logo): nav links — Merge, Compress, Edit PDF, Image to PDF, PDF to image. Edit PDF is not in the mobile bottom tab bar; link from the landing page on phones.
 - Right: theme toggle (`Sun`/`Moon` icon button, `ghost`).
 - Active link: `text-primary font-medium`. Inactive: `text-muted-foreground`. No underline indicator — color alone distinguishes the active state.
 
@@ -302,13 +302,14 @@ File processing can take several seconds on large PDFs. The UI must not look fro
 
 ### 2.8 Feature cards (landing page)
 
-Three cards, one per tool. Each card:
+One card per tool (five tools today). Each card uses `ToolCard` with:
 
-- `Card` with `p-6`, `rounded-xl`, hover state: `shadow-sm ring-1 ring-border` → `ring-primary/20`.
-- Top: tool icon (`24px`, `text-primary`) in a `rounded-lg bg-primary/10 p-2` container.
-- Below icon: tool name (`text-xl font-semibold`), one-line description (`text-sm text-muted-foreground`).
-- Bottom: `Link` styled as a `default` button — "Merge files", "Compress PDF", "Convert images".
-- Cards are in a 3-column grid on desktop (`grid-cols-3`), 1-column on mobile.
+- `jobLabel` (`text-base` or `text-xl font-semibold`): plain-language task ("Make one file", "Shrink for email").
+- `title` (`text-xs text-muted-foreground`): technical tool name ("Merge PDFs").
+- `description` (`text-xs` or `text-sm text-muted-foreground`): one-line detail.
+- Bottom: `CardActionLink` with a verb-first label ("Combine files", "Edit pages").
+- `Card` with compact padding, `rounded-xl`, hover `ring-primary/20`.
+- Grid: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` on the landing page.
 
 ### 2.9 Toasts
 
@@ -331,7 +332,7 @@ No toast for file additions to the list — the visual list update is feedback e
 Layout: `max-w-5xl`, scrollable vertical stack (`gap-8` / `gap-10`).
 
 - **Hero**: headline (`text-2xl font-bold`), tagline (`text-sm text-muted-foreground`), then a short **origin story** paragraph (why the app exists: no paywalls, no sign-ups, no harvesting uploads).
-- **Tool cards**: four-column grid on `lg` (§2.8; compact `ToolCard` variant).
+- **Tool cards**: three-column grid on `lg` (§2.8; compact `ToolCard` with `jobLabel`).
 - **Architecture modal** (`ArchitectureModal`): centered `SecondaryActionButton` ("App architecture") below the cards. Opens a shadcn `Dialog` with system overview diagram, server request flow, processing matrix, and repo map for developers.
 - **GitHub link** (`GitHubRepoLink`): outline button beside the architecture control ("View source on GitHub"). Opens `GITHUB_REPO_URL` in a new tab (`rel="noopener noreferrer"`).
 - **Trust section** (`LandingTrustSection`): `rounded-2xl border bg-muted/40` strip — four privacy pillar cards (2×2 grid), four-step “How processing works” row, and **Guidelines & limits** (common failure reasons). Icons in `bg-primary/10` or `bg-info/10` circles; copy must match the stateless architecture (no DB, in-memory processing, HTTPS, no third-party file APIs).

@@ -1,6 +1,7 @@
 /** Browser only */
 
 import type { QualityPreset } from "@/lib/constants";
+import type { ImagePdfLayoutOptions } from "@/lib/image-pdf-layout";
 
 const WORKER_URL = "/workers/merge.worker.mjs";
 const WORKER_TIMEOUT_MS = 120_000;
@@ -10,6 +11,7 @@ type FileWorkerJobType = "merge" | "image-to-pdf";
 type FileWorkerRequest = {
   type: FileWorkerJobType;
   files: Array<{ bytes: ArrayBuffer; mimeType: string }>;
+  layout?: ImagePdfLayoutOptions;
 };
 
 type CompressWorkerRequest = {
@@ -72,6 +74,7 @@ function runWorkerRequest(
 async function runFileJobInWorker(
   type: FileWorkerJobType,
   files: File[],
+  layout?: ImagePdfLayoutOptions,
   onProgress?: WorkerJobProgress
 ): Promise<Uint8Array> {
   const filePayload = await Promise.all(
@@ -81,21 +84,23 @@ async function runFileJobInWorker(
     }))
   );
 
-  return runWorkerRequest({ type, files: filePayload }, onProgress);
+  return runWorkerRequest({ type, files: filePayload, layout }, onProgress);
 }
 
 export function runMergeInWorker(
   files: File[],
+  imageLayout: ImagePdfLayoutOptions,
   onProgress?: WorkerJobProgress
 ): Promise<Uint8Array> {
-  return runFileJobInWorker("merge", files, onProgress);
+  return runFileJobInWorker("merge", files, imageLayout, onProgress);
 }
 
 export function runImageToPdfInWorker(
   files: File[],
+  layout: ImagePdfLayoutOptions,
   onProgress?: WorkerJobProgress
 ): Promise<Uint8Array> {
-  return runFileJobInWorker("image-to-pdf", files, onProgress);
+  return runFileJobInWorker("image-to-pdf", files, layout, onProgress);
 }
 
 export async function runCompressInWorker(

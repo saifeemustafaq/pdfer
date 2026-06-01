@@ -50,25 +50,31 @@ pdfer/
 │   │   ├── merge/                      # Merge PDFs + images; client page reorder step
 │   │   ├── compress/                   # Compress PDF with quality presets
 │   │   ├── convert/                    # Hub linking image-to-PDF and PDF-to-image
-│   │   ├── image-to-pdf/               # Images → multi-page PDF (server)
+│   │   ├── edit-pdf/                   # Reorder, remove, rotate pages (browser only)
+│   │   ├── image-to-pdf/               # Images → multi-page PDF (hybrid)
 │   │   └── pdf-to-image/               # PDF pages → ZIP of images (browser)
 │   ├── api/
 │   │   ├── merge/route.ts              # POST multipart: PDFs + images → merged PDF
 │   │   ├── compress/route.ts           # POST multipart: PDF + quality → compressed PDF
-│   │   └── image-to-pdf/route.ts       # POST multipart: images → PDF
+│   │   ├── image-to-pdf/route.ts       # POST multipart: images → PDF
+│   │   └── send-result/route.ts        # POST multipart: email delivery of result blob
 │   ├── layout.tsx                      # Root layout (Inter, ThemeProvider, Toaster, MobileTabBar)
 │   ├── error.tsx                       # Root error boundary
-│   └── globals.css                     # Tailwind v4 + shadcn theme tokens
+│   └── globals.css                     # Tailwind v4 + shadcn theme tokens + layout utilities (pb-mobile-nav, fixed-export-sidebar)
 ├── components/
 │   ├── ui/                             # shadcn-generated UI primitives (do not modify)
 │   ├── app-button.tsx                  # PrimaryActionButton, SecondaryActionButton, …
 │   ├── architecture-modal.tsx          # Landing-page developer architecture dialog
 │   ├── file-dropzone.tsx               # react-dropzone wrapper (all tools)
 │   ├── file-list.tsx                   # Drag-to-reorder staged files
-│   ├── page-grid.tsx                   # Merge: thumbnail grid, reorder/remove pages
+│   ├── page-grid.tsx                   # Thumbnail grid: reorder, remove, rotate pages
+│   ├── image-pdf-layout-options.tsx    # Image-to-PDF: native vs fit-to-page controls
 │   ├── landing-trust-section.tsx       # Privacy pillars, processing steps, guidelines
 │   ├── quality-slider.tsx              # Compression preset picker
 │   ├── download-button.tsx             # Blob download trigger
+│   ├── email-delivery-form.tsx           # Email result delivery (6 MB cap)
+│   ├── hybrid-processing-feedback.tsx  # Upload notice + badge + fallback + progress
+│   ├── tool-result-footer.tsx          # Download + secondary action + email card
 │   ├── processing-badge.tsx            # "On your device" / "On server" badge
 │   ├── processing-fallback.tsx         # Retry UI after local/server failure
 │   ├── upload-size-notice.tsx          # Size warning + hybrid routing context
@@ -78,8 +84,12 @@ pdfer/
 ├── lib/
 │   ├── constants.ts                    # MAX_SERVER_UPLOAD_BYTES, presets, routes, MIME lists
 │   ├── download-client.ts              # triggerBlobDownload() for client downloads
-│   ├── file-utils.ts                   # MIME guards, size validation, filename helpers
-│   ├── pdf-client.ts                   # Browser: reorder/remove PDF pages (pdf-lib)
+│   ├── email-client.ts                 # sendResultByEmail() → POST /api/send-result
+│   ├── email-utils.ts                  # Email validation helpers
+│   ├── file-utils.ts                   # MIME guards, size validation, staged IDs, readFormFile()
+│   ├── pdf-client.ts                   # Browser: exportEditedPdf (reorder/remove/rotate)
+│   ├── image-pdf-layout.ts             # Shared page size / margin layout math
+│   ├── image-pdf-embed.ts              # Embed normalized JPEG onto PDF pages
 │   ├── pdf-export.ts                   # Browser: PDF → image ZIP (pdfjs-dist + jszip)
 │   ├── processing/
 │   │   ├── types.ts                    # ProcessingMode, RoutingDecision, result types
@@ -88,12 +98,14 @@ pdfer/
 │   │   ├── orchestrator.ts             # processMerge(), processImageToPdf(), processCompress()
 │   │   ├── errors.ts                   # LocalProcessingError, ServerProcessingError
 │   │   ├── device-context.ts           # Navigator hints for routing (browser only)
+│   │   ├── use-routing-badge.ts        # Client hook: processingInfo ?? decide()
 │   │   ├── local/
 │   │   │   ├── merge.ts                # Browser merge (pdf-lib + canvas for images)
 │   │   │   ├── image-to-pdf.ts         # Browser images → PDF
 │   │   │   ├── compress.ts             # Browser compress (canvas JPEG re-encode)
 │   │   │   └── image-normalize.ts      # Canvas JPEG re-encode (shared)
 │   │   ├── server/
+│   │   │   ├── fetch.ts                # postFormData / postFormDataBlob (shared error handling)
 │   │   │   ├── merge.ts                # fetch POST /api/merge
 │   │   │   ├── image-to-pdf.ts         # fetch POST /api/image-to-pdf
 │   │   │   └── compress.ts             # fetch POST /api/compress
@@ -103,7 +115,8 @@ pdfer/
 │   ├── services/
 │   │   ├── pdf-merger.ts               # Server: merge PDFs/images (pdf-lib + sharp)
 │   │   ├── pdf-compressor.ts           # Server: re-encode embedded images (pdf-lib + sharp)
-│   │   └── image-to-pdf.ts             # Server: images → PDF pages (pdf-lib + sharp)
+│   │   ├── image-to-pdf.ts             # Server: images → PDF pages (pdf-lib + sharp)
+│   │   └── email-delivery.ts           # Server: Nodemailer send for /api/send-result
 │   └── utils.ts                        # cn() helper
 ├── types/
 │   └── index.ts                        # FileEntry, StagedFileItem, ProcessResult, …

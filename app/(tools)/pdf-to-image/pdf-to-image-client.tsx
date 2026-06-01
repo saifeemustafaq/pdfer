@@ -6,18 +6,15 @@ import { FileImage, Loader2, X, FileText, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import {
   PrimaryActionButton,
-  SecondaryActionButton,
   IconTouchButton,
 } from "@/components/app-button";
 import { ToolShell } from "@/components/tool-shell";
 import { FileDropzone } from "@/components/file-dropzone";
 import { ImageFormatPicker } from "@/components/image-format-picker";
 import { ProcessingProgress } from "@/components/processing-progress";
-import { DownloadButton } from "@/components/download-button";
-import { ActionButtonGroup } from "@/components/action-button-group";
-import { EmailDeliveryForm } from "@/components/email-delivery-form";
+import { ToolResultFooter } from "@/components/tool-result-footer";
 import {
-  MAX_UPLOAD_BYTES,
+  LOCAL_SIZE_WARN_BYTES,
   OUTPUT_FILENAMES,
   TOOL_ROUTES,
   type PdfImageFormat,
@@ -36,10 +33,6 @@ export function PdfToImageClient() {
   const handleDrop = useCallback((files: File[]) => {
     const pdf = files[0];
     if (!pdf) return;
-    if (pdf.size > MAX_UPLOAD_BYTES) {
-      toast.error("File too large: 6 MB limit");
-      return;
-    }
     setFile(pdf);
     setResult(null);
     setPageCount(0);
@@ -96,8 +89,9 @@ export function PdfToImageClient() {
           onDrop={handleDrop}
           accept={{ "application/pdf": [".pdf"] }}
           multiple={false}
+          maxSize={LOCAL_SIZE_WARN_BYTES}
           label="Drop a PDF here, or click to browse."
-          hint="Accepts PDF · max 6 MB · exported as ZIP"
+          hint="Accepts PDF · large jobs run on your device · email up to 6 MB"
           disabled={loading}
         />
       ) : (
@@ -153,25 +147,15 @@ export function PdfToImageClient() {
               {formatBytes(result.size)}
             </span>
           </p>
-          <ActionButtonGroup>
-            <DownloadButton
-              blob={result}
-              filename={OUTPUT_FILENAMES.pdfToImageZip}
-              label="Download ZIP"
-            />
-            <SecondaryActionButton type="button" onClick={handleClear}>
-              Convert another PDF
-            </SecondaryActionButton>
-          </ActionButtonGroup>
-
-          <div className="rounded-xl border border-border bg-card p-4">
-            <EmailDeliveryForm
-              inputId="pdf-to-image-email"
-              blob={result}
-              filename={OUTPUT_FILENAMES.pdfToImageZip}
-              toolLabel="PDF export ZIP"
-            />
-          </div>
+          <ToolResultFooter
+            blob={result}
+            downloadFilename={OUTPUT_FILENAMES.pdfToImageZip}
+            downloadLabel="Download ZIP"
+            secondaryLabel="Convert another PDF"
+            onSecondary={handleClear}
+            emailInputId="pdf-to-image-email"
+            toolLabel="PDF export ZIP"
+          />
         </div>
       )}
     </ToolShell>

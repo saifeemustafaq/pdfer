@@ -4,9 +4,9 @@ import { PdfFormFillPanel } from "@/components/pdf-form-fill-panel";
 import { PdfSignatureOptionsPanel } from "@/components/pdf-signature-options-panel";
 import { cn } from "@/lib/utils";
 import {
-  DEFAULT_SIGNATURE_PLACEMENT,
+  DEFAULT_SIGNATURE_SPEC,
   type FormFieldMeta,
-  type SignaturePlacement,
+  type SignatureSpec,
 } from "@/lib/pdf-form-sign";
 
 type PdfFormSignPanelProps = {
@@ -17,9 +17,10 @@ type PdfFormSignPanelProps = {
   onValuesChange: (values: Record<string, string | boolean>) => void;
   signatureEnabled: boolean;
   onSignatureEnabledChange: (enabled: boolean) => void;
-  signaturePlacement: SignaturePlacement;
-  onSignaturePlacementChange: (placement: SignaturePlacement) => void;
+  signatureSpec: SignatureSpec;
+  onSignatureSpecChange: (spec: SignatureSpec) => void;
   onSignatureChange: (pngBytes: Uint8Array | null) => void;
+  signaturePng?: Uint8Array | null;
   pageCount: number;
   className?: string;
 };
@@ -32,9 +33,10 @@ export function PdfFormSignPanel({
   onValuesChange,
   signatureEnabled,
   onSignatureEnabledChange,
-  signaturePlacement,
-  onSignaturePlacementChange,
+  signatureSpec,
+  onSignatureSpecChange,
   onSignatureChange,
+  signaturePng,
   pageCount,
   className,
 }: PdfFormSignPanelProps) {
@@ -51,13 +53,14 @@ export function PdfFormSignPanel({
       <PdfSignatureOptionsPanel
         enabled={signatureEnabled}
         onEnabledChange={onSignatureEnabledChange}
-        placement={signaturePlacement}
-        onPlacementChange={onSignaturePlacementChange}
+        spec={signatureSpec}
+        onSpecChange={onSignatureSpecChange}
         onSignatureChange={onSignatureChange}
+        signaturePng={signaturePng}
         pageCount={pageCount}
       />
     </div>
   );
 }
 
-export { DEFAULT_SIGNATURE_PLACEMENT };
+export { DEFAULT_SIGNATURE_SPEC };

@@ -1,50 +1,52 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { Eraser } from "lucide-react";
-import { SecondaryActionButton } from "@/components/app-button";
+import { Eraser, Maximize2 } from "lucide-react";
+import { IconTouchButton, SecondaryActionButton } from "@/components/app-button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { canvasToTrimmedPng } from "@/lib/signature-image";
+import { DEFAULT_SIGNATURE_INK_COLOR } from "@/lib/constants";
+import {
+  canvasToTrimmedPng,
+  initSignatureCanvas,
+  loadPngOntoCanvas,
+  type SignatureCanvasSize,
+} from "@/lib/signature-image";
 
 type SignaturePadProps = {
   onChange: (pngBytes: Uint8Array | null) => void;
+  inkColor?: string;
   disabled?: boolean;
   className?: string;
+  size?: SignatureCanvasSize;
+  initialPng?: Uint8Array | null;
+  showExpandButton?: boolean;
+  onExpandClick?: () => void;
 };
 
-function resolveStrokeColor(): string {
-  if (typeof document === "undefined") return "currentColor";
-  const foreground = getComputedStyle(document.documentElement)
-    .getPropertyValue("--foreground")
-    .trim();
-  return foreground || "currentColor";
-}
-
-function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-
-  const dpr = window.devicePixelRatio || 1;
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
-  canvas.width = Math.max(1, Math.floor(width * dpr));
-  canvas.height = Math.max(1, Math.floor(height * dpr));
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.scale(dpr, dpr);
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.lineWidth = 2.5;
-  ctx.strokeStyle = resolveStrokeColor();
-  return ctx;
-}
+const CANVAS_HEIGHT: Record<SignatureCanvasSize, string> = {
+  compact: "h-36",
+  large: "min-h-[220px] h-56 sm:h-64",
+};
 
 export function SignaturePad({
   onChange,
+  inkColor = DEFAULT_SIGNATURE_INK_COLOR,
   disabled = false,
   className,
+  size = "compact",
+  initialPng = null,
+  showExpandButton = false,
+  onExpandClick,
 }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const inkColorRef = useRef(inkColor);
+  const skipExternalLoadRef = useRef(false);
+  inkColorRef.current = inkColor;
 
   const exportSignature = useCallback(async () => {
     const canvas = canvasRef.current;
@@ -53,14 +55,33 @@ export function SignaturePad({
       return;
     }
     const bytes = await canvasToTrimmedPng(canvas);
+    skipExternalLoadRef.current = true;
     onChange(bytes);
   }, [disabled, onChange]);
 
-  useEffect(() => {
+  const resetCanvas = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    setupCanvas(canvas);
-  }, []);
+    if (initialPng?.length) {
+      await loadPngOntoCanvas(canvas, initialPng, inkColorRef.current, size);
+      return;
+    }
+    initSignatureCanvas(canvas, inkColorRef.current, size);
+  }, [initialPng, size]);
+
+  useEffect(() => {
+    if (skipExternalLoadRef.current) {
+      skipExternalLoadRef.current = false;
+      return;
+    }
+    void resetCanvas();
+  }, [initialPng, resetCanvas]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (ctx) ctx.strokeStyle = inkColor;
+  }, [inkColor]);
 
   useEffect(() => {
     if (disabled) onChange(null);
@@ -82,6 +103,7 @@ export function SignaturePad({
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
+    ctx.strokeStyle = inkColorRef.current;
     canvas.setPointerCapture(event.pointerId);
     const { x, y } = getPoint(event);
     ctx.beginPath();
@@ -110,27 +132,48 @@ export function SignaturePad({
   function handleClear() {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    setupCanvas(canvas);
+    initSignatureCanvas(canvas, inkColorRef.current, size);
+    skipExternalLoadRef.current = true;
     onChange(null);
   }
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <canvas
-        ref={canvasRef}
-        className={cn(
-          "h-36 w-full rounded-lg border border-dashed border-border touch-none",
-          disabled
-            ? "cursor-not-allowed bg-muted/40 opacity-50"
-            : "signature-pad-grid bg-transparent"
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          className={cn(
+            "w-full rounded-lg border border-dashed border-border touch-none",
+            CANVAS_HEIGHT[size],
+            disabled
+              ? "cursor-not-allowed bg-muted/40 opacity-50"
+              : "signature-pad-grid bg-transparent"
+          )}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
+          aria-label="Draw your signature"
+          aria-disabled={disabled}
+        />
+        {showExpandButton && !disabled && onExpandClick && (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconTouchButton
+                  type="button"
+                  aria-label="Open larger signature pad"
+                  onClick={onExpandClick}
+                  className="absolute top-1.5 right-1.5 min-h-9 min-w-9 hover:text-foreground"
+                >
+                  <Maximize2 className="size-4" />
+                </IconTouchButton>
+              }
+            />
+            <TooltipContent>Larger signing area</TooltipContent>
+          </Tooltip>
         )}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-        aria-label="Draw your signature"
-        aria-disabled={disabled}
-      />
+      </div>
       <SecondaryActionButton
         type="button"
         onClick={handleClear}

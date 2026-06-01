@@ -6,7 +6,7 @@ import { applyTextWatermark, type WatermarkSpec } from "@/lib/pdf-watermark";
 import {
   exportFormSignPdf,
   type FormFieldMeta,
-  type SignaturePlacement,
+  type SignatureSpec,
 } from "@/lib/pdf-form-sign";
 
 export type EditExportOptions = {
@@ -17,7 +17,7 @@ export type EditExportOptions = {
   fieldValues?: Record<string, string | boolean>;
   signatureEnabled?: boolean;
   signaturePng?: Uint8Array | null;
-  signaturePlacement?: SignaturePlacement;
+  signatureSpec?: SignatureSpec;
 };
 
 /** Apply page edits, watermark, form fill, and signature in order. */
@@ -48,7 +48,7 @@ export async function exportEditedPdfFull(
       fieldMeta: options.fieldMeta,
       fieldValues: options.fieldValues,
       signaturePng: options.signaturePng,
-      signaturePlacement: options.signaturePlacement,
+      signatureSpec: options.signatureSpec,
     });
   }
 

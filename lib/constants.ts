@@ -103,6 +103,26 @@ export const OUTPUT_FILENAMES = {
   unlock: "unlocked.pdf",
 } as const;
 
+/** Preset ink colors for drawn signatures (exported into PNG alpha). */
+export const SIGNATURE_INK_COLORS = {
+  black: "#1a1a1a",
+  blue: "#1d4ed8",
+  red: "#dc2626",
+} as const;
+
+export type SignatureInkPreset = keyof typeof SIGNATURE_INK_COLORS;
+
+export const DEFAULT_SIGNATURE_INK_COLOR = SIGNATURE_INK_COLORS.black;
+
+export const SIGNATURE_INK_PRESET_OPTIONS: {
+  id: SignatureInkPreset;
+  label: string;
+}[] = [
+  { id: "black", label: "Black" },
+  { id: "blue", label: "Blue" },
+  { id: "red", label: "Red" },
+];
+
 export type PdfImageFormat = "jpeg" | "png";
 
 export const PDF_IMAGE_FORMATS = {

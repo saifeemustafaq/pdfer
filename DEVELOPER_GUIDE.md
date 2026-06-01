@@ -80,6 +80,8 @@ pdfer/
 │   ├── pdf-page-preview-frame.tsx      # Shared PDF page preview shell (watermark, signature)
 │   ├── pdf-signature-options-panel.tsx # Edit PDF: signature pad, placement, upload
 │   ├── pdf-signature-preview.tsx       # Edit PDF: live signature placement preview
+│   ├── signature-draggable-overlay.tsx # Edit PDF: drag/resize signature on preview
+│   ├── signature-page-scope-panel.tsx  # Edit PDF: all/range/pick pages + per-page toggle
 │   ├── pdf-watermark-panel.tsx         # Edit PDF: watermark enable + options
 │   ├── pdf-watermark-preview.tsx       # Edit PDF: live watermark preview
 │   ├── signature-pad.tsx               # Canvas signature capture

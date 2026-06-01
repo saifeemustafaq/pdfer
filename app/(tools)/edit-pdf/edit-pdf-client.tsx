@@ -18,7 +18,7 @@ import { EditPdfTabBar, type EditPdfTab } from "@/components/edit-pdf-tab-bar";
 import { PdfWatermarkPanel } from "@/components/pdf-watermark-panel";
 import {
   PdfFormSignPanel,
-  DEFAULT_SIGNATURE_PLACEMENT,
+  DEFAULT_SIGNATURE_SPEC,
 } from "@/components/pdf-form-sign-panel";
 import type { PageGridSummary } from "@/components/page-grid";
 import type { PageEditSpec } from "@/lib/pdf-client";
@@ -26,7 +26,7 @@ import { exportEditedPdfFull } from "@/lib/pdf-edit-export";
 import {
   detectFormFields,
   type FormFieldMeta,
-  type SignaturePlacement,
+  type SignatureSpec,
 } from "@/lib/pdf-form-sign";
 import {
   DEFAULT_WATERMARK_SPEC,
@@ -85,8 +85,8 @@ export function EditPdfClient() {
   >({});
   const [signatureEnabled, setSignatureEnabled] = useState(false);
   const [signaturePng, setSignaturePng] = useState<Uint8Array | null>(null);
-  const [signaturePlacement, setSignaturePlacement] =
-    useState<SignaturePlacement>(DEFAULT_SIGNATURE_PLACEMENT);
+  const [signatureSpec, setSignatureSpec] =
+    useState<SignatureSpec>(DEFAULT_SIGNATURE_SPEC);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
 
   const handleDrop = useCallback(async (files: File[]) => {
@@ -123,13 +123,21 @@ export function EditPdfClient() {
         ...prev,
         rangeEnd: preflight.pageCount ?? prev.rangeEnd,
       }));
-      setSignaturePlacement((prev) => ({
-        ...prev,
-        pageIndex: Math.min(
-          prev.pageIndex,
-          Math.max(0, (preflight.pageCount ?? 1) - 1)
-        ),
-      }));
+      setSignatureSpec((prev) => {
+        const maxIndex = Math.max(0, (preflight.pageCount ?? 1) - 1);
+        const filteredSelected = prev.selectedPages.filter(
+          (index) => index <= maxIndex
+        );
+        return {
+          ...prev,
+          rangeEnd: preflight.pageCount ?? prev.rangeEnd,
+          activePageIndex: Math.min(prev.activePageIndex, maxIndex),
+          selectedPages:
+            filteredSelected.length > 0
+              ? filteredSelected
+              : [Math.min(prev.activePageIndex, maxIndex)],
+        };
+      });
 
       try {
         const fields = await detectFormFields(pdf);
@@ -162,7 +170,7 @@ export function EditPdfClient() {
     setResultBlob(null);
     setWatermarkEnabled(false);
     setWatermarkSpec(DEFAULT_WATERMARK_SPEC);
-    setSignaturePlacement(DEFAULT_SIGNATURE_PLACEMENT);
+    setSignatureSpec(DEFAULT_SIGNATURE_SPEC);
   }
 
   const handleEditSpecChange = useCallback((spec: PageEditSpec) => {
@@ -193,7 +201,7 @@ export function EditPdfClient() {
       fieldValues,
       signatureEnabled,
       signaturePng,
-      signaturePlacement,
+      signatureSpec,
     });
   }
 
@@ -251,15 +259,16 @@ export function EditPdfClient() {
             if (!enabled) setSignaturePng(null);
             setResultBlob(null);
           }}
-          signaturePlacement={signaturePlacement}
-          onSignaturePlacementChange={(placement) => {
-            setSignaturePlacement(placement);
+          signatureSpec={signatureSpec}
+          onSignatureSpecChange={(spec) => {
+            setSignatureSpec(spec);
             setResultBlob(null);
           }}
           onSignatureChange={(png) => {
             setSignaturePng(png);
             setResultBlob(null);
           }}
+          signaturePng={signaturePng}
           pageCount={pageCount}
         />
       ) : null
@@ -390,7 +399,11 @@ export function EditPdfClient() {
                     pdfBlob={pdfBlob}
                     signaturePng={signaturePng}
                     signatureEnabled={signatureEnabled}
-                    placement={signaturePlacement}
+                    spec={signatureSpec}
+                    onSpecChange={(spec) => {
+                      setSignatureSpec(spec);
+                      setResultBlob(null);
+                    }}
                     pageCount={pageCount}
                   />
                 )}

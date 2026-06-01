@@ -90,6 +90,9 @@ export function PdfWatermarkPreview({
       loading={loading}
       error={error}
       pageAlt={`Page ${previewPage} preview`}
+      pageNumber={previewPage}
+      pageCount={pageCount}
+      onPageChange={setPreviewPage}
       pageLabel={pageLabel}
       hint={
         !enabled ? (

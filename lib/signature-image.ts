@@ -1,5 +1,68 @@
 /** Trim and export signature canvases as transparent PNG bytes. */
 
+export type SignatureCanvasSize = "compact" | "large";
+
+const SIGNATURE_LINE_WIDTH: Record<SignatureCanvasSize, number> = {
+  compact: 2.5,
+  large: 3.5,
+};
+
+/** Prepare a signature canvas for drawing (clears existing content). */
+export function initSignatureCanvas(
+  canvas: HTMLCanvasElement,
+  inkColor: string,
+  size: SignatureCanvasSize = "compact"
+): CanvasRenderingContext2D | null {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  const dpr = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  canvas.width = Math.max(1, Math.floor(width * dpr));
+  canvas.height = Math.max(1, Math.floor(height * dpr));
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.scale(dpr, dpr);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = SIGNATURE_LINE_WIDTH[size];
+  ctx.strokeStyle = inkColor;
+  return ctx;
+}
+
+/** Draw an existing PNG signature onto a canvas (scaled to fit). */
+export async function loadPngOntoCanvas(
+  canvas: HTMLCanvasElement,
+  png: Uint8Array,
+  inkColor: string,
+  size: SignatureCanvasSize = "compact"
+): Promise<boolean> {
+  const ctx = initSignatureCanvas(canvas, inkColor, size);
+  if (!ctx) return false;
+
+  try {
+    const bitmap = await createImageBitmap(
+      new Blob([png.buffer as ArrayBuffer], { type: "image/png" })
+    );
+    const pad = 12;
+    const maxW = Math.max(1, canvas.clientWidth - pad * 2);
+    const maxH = Math.max(1, canvas.clientHeight - pad * 2);
+    const scale = Math.min(maxW / bitmap.width, maxH / bitmap.height, 1);
+    const drawW = bitmap.width * scale;
+    const drawH = bitmap.height * scale;
+    const x = (canvas.clientWidth - drawW) / 2;
+    const y = (canvas.clientHeight - drawH) / 2;
+
+    ctx.drawImage(bitmap, x, y, drawW, drawH);
+    bitmap.close();
+    return hasCanvasInk(canvas);
+  } catch (err) {
+    console.error("loadPngOntoCanvas failed:", err);
+    return false;
+  }
+}
+
 export function hasCanvasInk(canvas: HTMLCanvasElement): boolean {
   const ctx = canvas.getContext("2d");
   if (!ctx) return false;

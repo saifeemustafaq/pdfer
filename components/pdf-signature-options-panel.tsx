@@ -1,27 +1,34 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { SecondaryActionButton } from "@/components/app-button";
 import { FilePickerButton } from "@/components/file-picker-button";
-import { SignaturePad } from "@/components/signature-pad";
+import { SignaturePadField } from "@/components/signature-pad-field";
+import { SignaturePageScopePanel } from "@/components/signature-page-scope-panel";
 import { cn } from "@/lib/utils";
+import { DEFAULT_SIGNATURE_INK_COLOR } from "@/lib/constants";
 import { fileToSignaturePng } from "@/lib/signature-image";
 import {
+  applyActivePlacementToAllSignedPages,
   applySignaturePreset,
+  getActivePlacement,
+  setActivePlacement,
   SIGNATURE_PLACEMENT_PRESETS,
-  type SignaturePlacement,
   type SignaturePlacementPreset,
+  type SignaturePosition,
+  type SignatureSpec,
 } from "@/lib/pdf-form-sign";
 
 type PdfSignatureOptionsPanelProps = {
   enabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
-  placement: SignaturePlacement;
-  onPlacementChange: (placement: SignaturePlacement) => void;
+  spec: SignatureSpec;
+  onSpecChange: (spec: SignatureSpec) => void;
   onSignatureChange: (pngBytes: Uint8Array | null) => void;
+  signaturePng?: Uint8Array | null;
   pageCount: number;
 };
 
@@ -34,13 +41,27 @@ const PLACEMENT_PRESETS: { id: SignaturePlacementPreset; label: string }[] = [
 export function PdfSignatureOptionsPanel({
   enabled,
   onEnabledChange,
-  placement,
-  onPlacementChange,
+  spec,
+  onSpecChange,
   onSignatureChange,
+  signaturePng = null,
   pageCount,
 }: PdfSignatureOptionsPanelProps) {
+  const [inkColor, setInkColor] = useState<string>(DEFAULT_SIGNATURE_INK_COLOR);
+  const activePlacement = getActivePlacement(spec);
+
+  function updateActivePlacement(
+    patch: Partial<SignaturePosition> | SignaturePosition
+  ) {
+    const next: SignaturePosition =
+      "x" in patch && "y" in patch && "width" in patch
+        ? (patch as SignaturePosition)
+        : { ...activePlacement, ...patch };
+    onSpecChange(setActivePlacement(spec, next));
+  }
+
   function applyPreset(preset: SignaturePlacementPreset) {
-    onPlacementChange(applySignaturePreset(placement, preset));
+    updateActivePlacement(applySignaturePreset(activePlacement, preset));
   }
 
   const handleUploadDrop = useCallback(
@@ -84,7 +105,13 @@ export function PdfSignatureOptionsPanel({
         disabled={!enabled}
         className={cn("space-y-4 border-0 p-0 m-0", !enabled && "opacity-50")}
       >
-        <SignaturePad onChange={onSignatureChange} disabled={!enabled} />
+        <SignaturePadField
+          value={signaturePng}
+          onChange={onSignatureChange}
+          inkColor={inkColor}
+          onInkColorChange={setInkColor}
+          disabled={!enabled}
+        />
 
         <FilePickerButton
           onDrop={handleUploadDrop}
@@ -109,20 +136,42 @@ export function PdfSignatureOptionsPanel({
           )}
         </FilePickerButton>
 
+        <SignaturePageScopePanel
+          spec={spec}
+          onChange={onSpecChange}
+          pageCount={pageCount}
+          disabled={!enabled}
+        />
+
+        {spec.perPagePlacement && (
+          <SecondaryActionButton
+            type="button"
+            className="w-full text-xs"
+            disabled={!enabled}
+            onClick={() =>
+              onSpecChange(
+                applyActivePlacementToAllSignedPages(spec, pageCount)
+              )
+            }
+          >
+            Copy current position to all signed pages
+          </SecondaryActionButton>
+        )}
+
         <div className="grid grid-cols-2 gap-2">
           <label className="space-y-1.5">
             <span className="text-xs font-medium text-muted-foreground">
-              Page
+              Preview page
             </span>
             <Input
               type="number"
               min={1}
               max={Math.max(1, pageCount)}
-              value={placement.pageIndex + 1}
+              value={spec.activePageIndex + 1}
               onChange={(e) =>
-                onPlacementChange({
-                  ...placement,
-                  pageIndex: Math.max(
+                onSpecChange({
+                  ...spec,
+                  activePageIndex: Math.max(
                     0,
                     Math.min(
                       (Number.parseInt(e.target.value, 10) || 1) - 1,
@@ -142,10 +191,9 @@ export function PdfSignatureOptionsPanel({
               type="number"
               min={10}
               max={80}
-              value={Math.round(placement.width * 100)}
+              value={Math.round(activePlacement.width * 100)}
               onChange={(e) =>
-                onPlacementChange({
-                  ...placement,
+                updateActivePlacement({
                   width:
                     Math.max(
                       10,
@@ -166,8 +214,8 @@ export function PdfSignatureOptionsPanel({
             {PLACEMENT_PRESETS.map(({ id, label }) => {
               const preset = SIGNATURE_PLACEMENT_PRESETS[id];
               const active =
-                Math.abs(placement.x - preset.x) < 0.001 &&
-                Math.abs(placement.y - preset.y) < 0.001;
+                Math.abs(activePlacement.x - preset.x) < 0.001 &&
+                Math.abs(activePlacement.y - preset.y) < 0.001;
               return (
                 <button
                   key={id}
@@ -197,10 +245,9 @@ export function PdfSignatureOptionsPanel({
               type="number"
               min={0}
               max={90}
-              value={Math.round(placement.x * 100)}
+              value={Math.round(activePlacement.x * 100)}
               onChange={(e) =>
-                onPlacementChange({
-                  ...placement,
+                updateActivePlacement({
                   x:
                     Math.max(
                       0,
@@ -219,10 +266,9 @@ export function PdfSignatureOptionsPanel({
               type="number"
               min={0}
               max={90}
-              value={Math.round(placement.y * 100)}
+              value={Math.round(activePlacement.y * 100)}
               onChange={(e) =>
-                onPlacementChange({
-                  ...placement,
+                updateActivePlacement({
                   y:
                     Math.max(
                       0,

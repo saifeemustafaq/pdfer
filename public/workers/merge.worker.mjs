@@ -20598,6 +20598,12 @@ var QUALITY_PRESETS = {
   high: { label: "Best quality", description: "Minimal compression, preserves detail", jpegQuality: 85 }
 };
 var QUALITY_PRESET_KEYS = Object.keys(QUALITY_PRESETS);
+var SIGNATURE_INK_COLORS = {
+  black: "#1a1a1a",
+  blue: "#1d4ed8",
+  red: "#dc2626"
+};
+var DEFAULT_SIGNATURE_INK_COLOR = SIGNATURE_INK_COLORS.black;
 
 // lib/processing/local/compress.ts
 async function recompressImageBytes(originalBytes, jpegQuality) {

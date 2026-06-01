@@ -1,4 +1,5 @@
 import { API_ROUTES } from "@/lib/constants";
+import { postFormData } from "@/lib/processing/server/fetch";
 
 type SendResultByEmailInput = {
   blob: Blob;
@@ -19,19 +20,9 @@ export async function sendResultByEmail({
   formData.append("filename", filename);
   formData.append("tool", toolLabel);
 
-  const res = await fetch(API_ROUTES.sendResult, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!res.ok) {
-    let message = "Could not send email. Please try again.";
-    try {
-      const data = (await res.json()) as { error?: string };
-      if (data.error) message = data.error;
-    } catch {
-      // use default message
-    }
-    throw new Error(message);
-  }
+  await postFormData(
+    API_ROUTES.sendResult,
+    formData,
+    "Could not send email. Please try again."
+  );
 }

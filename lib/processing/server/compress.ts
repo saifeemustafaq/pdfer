@@ -1,6 +1,7 @@
 /** Browser only */
 
 import { API_ROUTES, type QualityPreset } from "@/lib/constants";
+import { postFormData } from "@/lib/processing/server/fetch";
 
 export type ServerCompressResult = {
   blob: Blob;
@@ -16,13 +17,7 @@ export async function compressPdfOnServer(
   form.append("file", file);
   form.append("quality", quality);
 
-  const res = await fetch(API_ROUTES.compress, { method: "POST", body: form });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: "Request failed" }));
-    throw new Error(body.error ?? "Processing failed. Please try again.");
-  }
-
+  const res = await postFormData(API_ROUTES.compress, form);
   const blob = await res.blob();
   const originalSize =
     Number(res.headers.get("X-Original-Size")) || file.size;

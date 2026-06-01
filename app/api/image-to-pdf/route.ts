@@ -4,6 +4,7 @@ import { OUTPUT_FILENAMES } from "@/lib/constants";
 import {
   getUploadSizeError,
   isAcceptedJpegPngMime,
+  readFormFile,
 } from "@/lib/file-utils";
 
 export async function POST(request: NextRequest) {
@@ -22,19 +23,18 @@ export async function POST(request: NextRequest) {
     let totalSize = 0;
 
     for (const entry of imageEntries) {
-      if (!(entry instanceof File)) {
-        return NextResponse.json(
-          { error: "Invalid file upload." },
-          { status: 400 }
-        );
+      const parsed = await readFormFile(entry);
+      if ("error" in parsed) {
+        return NextResponse.json({ error: parsed.error }, { status: 400 });
       }
-      if (!isAcceptedJpegPngMime(entry.type)) {
+
+      const { file, buffer } = parsed;
+      if (!isAcceptedJpegPngMime(file.type)) {
         return NextResponse.json(
           { error: "Only JPEG and PNG images are accepted" },
           { status: 400 }
         );
       }
-      const buffer = Buffer.from(await entry.arrayBuffer());
       totalSize += buffer.byteLength;
       buffers.push(buffer);
     }

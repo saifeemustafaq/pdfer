@@ -4,6 +4,7 @@ import { OUTPUT_FILENAMES } from "@/lib/constants";
 import {
   getUploadSizeError,
   isAcceptedMergeMime,
+  readFormFile,
 } from "@/lib/file-utils";
 import type { FileEntry } from "@/types";
 
@@ -23,17 +24,15 @@ export async function POST(request: NextRequest) {
     let totalSize = 0;
 
     for (const entry of entries) {
-      if (!(entry instanceof File)) {
-        return NextResponse.json(
-          { error: "Invalid file upload." },
-          { status: 400 }
-        );
+      const parsed = await readFormFile(entry);
+      if ("error" in parsed) {
+        return NextResponse.json({ error: parsed.error }, { status: 400 });
       }
 
-      const buffer = Buffer.from(await entry.arrayBuffer());
+      const { file, buffer } = parsed;
       totalSize += buffer.byteLength;
 
-      if (!isAcceptedMergeMime(entry.type, buffer)) {
+      if (!isAcceptedMergeMime(file.type, buffer)) {
         return NextResponse.json(
           { error: "Only PDF, JPEG, and PNG files are accepted" },
           { status: 400 }
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest) {
 
       files.push({
         buffer,
-        mimetype: entry.type,
+        mimetype: file.type,
       });
     }
 

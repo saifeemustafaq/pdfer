@@ -19,9 +19,7 @@ import { ToolShell } from "@/components/tool-shell";
 import { FileDropzone } from "@/components/file-dropzone";
 import { FileList } from "@/components/file-list";
 import { ProcessingProgress } from "@/components/processing-progress";
-import { ProcessingBadge } from "@/components/processing-badge";
-import { ProcessingFallback } from "@/components/processing-fallback";
-import { UploadSizeNotice } from "@/components/upload-size-notice";
+import { HybridProcessingFeedback } from "@/components/hybrid-processing-feedback";
 import { EmailDeliveryForm } from "@/components/email-delivery-form";
 import type { PageGridSummary } from "@/components/page-grid";
 import { reorderPdfPages } from "@/lib/pdf-client";
@@ -34,16 +32,19 @@ import {
   UPLOAD_WARN_BYTES,
   type QualityPreset,
 } from "@/lib/constants";
-import { formatBytes, buildCompressedFilename } from "@/lib/file-utils";
+import {
+  createStagedFileId,
+  formatBytes,
+  buildCompressedFilename,
+} from "@/lib/file-utils";
 import {
   getFallbackVariant,
   getProcessingErrorMessage,
   type ProcessingFallbackVariant,
 } from "@/lib/processing/errors";
 import { processMerge, processCompress } from "@/lib/processing/orchestrator";
-import { buildRoutingContext, decide } from "@/lib/processing/router";
-import { getDeviceHints } from "@/lib/processing/device-context";
-import type { ProcessingMode } from "@/lib/processing/types";
+import { useRoutingBadge } from "@/lib/processing/use-routing-badge";
+import type { ProcessingInfo, ProcessingMode } from "@/lib/processing/types";
 import type { StagedFileItem } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -59,16 +60,6 @@ const MERGE_ACCEPT = {
 };
 
 const MERGE_DEBOUNCE_MS = 400;
-
-let idCounter = 0;
-function newId() {
-  return `file-${++idCounter}-${Math.random().toString(36).slice(2)}`;
-}
-
-type ProcessingInfo = {
-  mode: ProcessingMode;
-  reason: string;
-};
 
 function isPdfFile(file: File): boolean {
   return file.type === "application/pdf";
@@ -101,12 +92,7 @@ export function MergeClient() {
   const totalSize = items.reduce((s, i) => s + i.file.size, 0);
   const showWarn = totalSize > UPLOAD_WARN_BYTES;
 
-  const routingDecision = useMemo(() => {
-    if (files.length === 0) return null;
-    return decide(buildRoutingContext("merge", files, getDeviceHints()));
-  }, [files]);
-
-  const badgeInfo = processingInfo ?? routingDecision;
+  const badgeInfo = useRoutingBadge("merge", files, processingInfo);
 
   const runAutoMerge = useCallback(
     async (fileItems: StagedFileItem[], forceMode?: ProcessingMode) => {
@@ -217,7 +203,7 @@ export function MergeClient() {
     setFallback(null);
     setItems((prev) => [
       ...prev,
-      ...accepted.map((f) => ({ id: newId(), file: f })),
+      ...accepted.map((f) => ({ id: createStagedFileId("file"), file: f })),
     ]);
     if (accepted.some((f) => f.type.startsWith("image/"))) {
       toast.info("Images will be compressed to JPEG for embedding");
@@ -299,7 +285,7 @@ export function MergeClient() {
         ? formatBytes(mergedBlob.size)
         : merging
           ? "…"
-          : "—";
+          : "…";
 
   const exportSidebar = (
     <div className="flex flex-col gap-3">
@@ -438,10 +424,16 @@ export function MergeClient() {
                 </DestructiveActionButton>
               </div>
 
-              <UploadSizeNotice
+              <HybridProcessingFeedback
                 operation="merge"
                 files={files}
                 showWarn={showWarn}
+                processingInfo={badgeInfo}
+                fallback={fallback}
+                active={merging}
+                onRetryServer={() => handleFallbackRetry("server")}
+                onRetryLocal={() => handleFallbackRetry("local")}
+                progressKey={String(merging)}
               />
 
               <p className="text-xs text-muted-foreground">
@@ -464,25 +456,6 @@ export function MergeClient() {
                 <FileList items={items} onReorder={setItems} />
               </div>
             </div>
-
-            {(merging || processingInfo) && badgeInfo && (
-              <ProcessingBadge mode={badgeInfo.mode} reason={badgeInfo.reason} />
-            )}
-
-            {fallback && (
-              <ProcessingFallback
-                variant={fallback}
-                onAction={
-                  fallback === "try-server"
-                    ? () => handleFallbackRetry("server")
-                    : fallback === "try-local"
-                      ? () => handleFallbackRetry("local")
-                      : undefined
-                }
-              />
-            )}
-
-            <ProcessingProgress key={String(merging)} active={merging} />
 
             {mergedBlob ? (
               <div className="space-y-4 pt-2 border-t border-border">

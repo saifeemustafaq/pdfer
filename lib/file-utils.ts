@@ -60,3 +60,25 @@ export function formatBytes(bytes: number): string {
 export function sanitizeFilename(name: string): string {
   return name.replace(/[^\w.\-() ]+/g, "_").slice(0, 200);
 }
+
+let stagedIdCounter = 0;
+
+/** Unique id for drag-reorder file list items. */
+export function createStagedFileId(prefix: string): string {
+  return `${prefix}-${++stagedIdCounter}-${Math.random().toString(36).slice(2)}`;
+}
+
+export type ReadFormFileResult =
+  | { file: File; buffer: Buffer }
+  | { error: string };
+
+/** Parse a single multipart file entry for API routes. */
+export async function readFormFile(
+  entry: FormDataEntryValue
+): Promise<ReadFormFileResult> {
+  if (!(entry instanceof File)) {
+    return { error: "Invalid file upload." };
+  }
+  const buffer = Buffer.from(await entry.arrayBuffer());
+  return { file: entry, buffer };
+}

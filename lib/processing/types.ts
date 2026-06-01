@@ -2,6 +2,12 @@
 
 export type ProcessingMode = "local" | "server";
 
+/** Runtime mode shown in tool UI after routing or completion. */
+export type ProcessingInfo = {
+  mode: ProcessingMode;
+  reason: string;
+};
+
 export type ProcessingOperation =
   | "merge"
   | "compress"

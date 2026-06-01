@@ -55,10 +55,11 @@ pdfer/
 │   ├── api/
 │   │   ├── merge/route.ts              # POST multipart: PDFs + images → merged PDF
 │   │   ├── compress/route.ts           # POST multipart: PDF + quality → compressed PDF
-│   │   └── image-to-pdf/route.ts       # POST multipart: images → PDF
+│   │   ├── image-to-pdf/route.ts       # POST multipart: images → PDF
+│   │   └── send-result/route.ts        # POST multipart: email delivery of result blob
 │   ├── layout.tsx                      # Root layout (Inter, ThemeProvider, Toaster, MobileTabBar)
 │   ├── error.tsx                       # Root error boundary
-│   └── globals.css                     # Tailwind v4 + shadcn theme tokens
+│   └── globals.css                     # Tailwind v4 + shadcn theme tokens + layout utilities (pb-mobile-nav, fixed-export-sidebar)
 ├── components/
 │   ├── ui/                             # shadcn-generated UI primitives (do not modify)
 │   ├── app-button.tsx                  # PrimaryActionButton, SecondaryActionButton, …
@@ -69,6 +70,9 @@ pdfer/
 │   ├── landing-trust-section.tsx       # Privacy pillars, processing steps, guidelines
 │   ├── quality-slider.tsx              # Compression preset picker
 │   ├── download-button.tsx             # Blob download trigger
+│   ├── email-delivery-form.tsx           # Email result delivery (6 MB cap)
+│   ├── hybrid-processing-feedback.tsx  # Upload notice + badge + fallback + progress
+│   ├── tool-result-footer.tsx          # Download + secondary action + email card
 │   ├── processing-badge.tsx            # "On your device" / "On server" badge
 │   ├── processing-fallback.tsx         # Retry UI after local/server failure
 │   ├── upload-size-notice.tsx          # Size warning + hybrid routing context
@@ -78,7 +82,9 @@ pdfer/
 ├── lib/
 │   ├── constants.ts                    # MAX_SERVER_UPLOAD_BYTES, presets, routes, MIME lists
 │   ├── download-client.ts              # triggerBlobDownload() for client downloads
-│   ├── file-utils.ts                   # MIME guards, size validation, filename helpers
+│   ├── email-client.ts                 # sendResultByEmail() → POST /api/send-result
+│   ├── email-utils.ts                  # Email validation helpers
+│   ├── file-utils.ts                   # MIME guards, size validation, staged IDs, readFormFile()
 │   ├── pdf-client.ts                   # Browser: reorder/remove PDF pages (pdf-lib)
 │   ├── pdf-export.ts                   # Browser: PDF → image ZIP (pdfjs-dist + jszip)
 │   ├── processing/
@@ -88,12 +94,14 @@ pdfer/
 │   │   ├── orchestrator.ts             # processMerge(), processImageToPdf(), processCompress()
 │   │   ├── errors.ts                   # LocalProcessingError, ServerProcessingError
 │   │   ├── device-context.ts           # Navigator hints for routing (browser only)
+│   │   ├── use-routing-badge.ts        # Client hook: processingInfo ?? decide()
 │   │   ├── local/
 │   │   │   ├── merge.ts                # Browser merge (pdf-lib + canvas for images)
 │   │   │   ├── image-to-pdf.ts         # Browser images → PDF
 │   │   │   ├── compress.ts             # Browser compress (canvas JPEG re-encode)
 │   │   │   └── image-normalize.ts      # Canvas JPEG re-encode (shared)
 │   │   ├── server/
+│   │   │   ├── fetch.ts                # postFormData / postFormDataBlob (shared error handling)
 │   │   │   ├── merge.ts                # fetch POST /api/merge
 │   │   │   ├── image-to-pdf.ts         # fetch POST /api/image-to-pdf
 │   │   │   └── compress.ts             # fetch POST /api/compress
@@ -103,7 +111,8 @@ pdfer/
 │   ├── services/
 │   │   ├── pdf-merger.ts               # Server: merge PDFs/images (pdf-lib + sharp)
 │   │   ├── pdf-compressor.ts           # Server: re-encode embedded images (pdf-lib + sharp)
-│   │   └── image-to-pdf.ts             # Server: images → PDF pages (pdf-lib + sharp)
+│   │   ├── image-to-pdf.ts             # Server: images → PDF pages (pdf-lib + sharp)
+│   │   └── email-delivery.ts           # Server: Nodemailer send for /api/send-result
 │   └── utils.ts                        # cn() helper
 ├── types/
 │   └── index.ts                        # FileEntry, StagedFileItem, ProcessResult, …

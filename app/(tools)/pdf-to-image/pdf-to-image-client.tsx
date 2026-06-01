@@ -9,6 +9,7 @@ import {
   IconTouchButton,
 } from "@/components/app-button";
 import { ToolShell } from "@/components/tool-shell";
+import { ToolLanding, ToolWorkspace } from "@/components/tool-landing";
 import { FileDropzone } from "@/components/file-dropzone";
 import { ImageFormatPicker } from "@/components/image-format-picker";
 import { ProcessingProgress } from "@/components/processing-progress";
@@ -71,92 +72,131 @@ export function PdfToImageClient() {
     }
   }
 
+  const rightSidebar = file ? (
+    <div className="flex flex-col gap-4">
+      {!result && (
+        <>
+          <ImageFormatPicker value={format} onChange={setFormat} />
+          <PrimaryActionButton
+            onClick={handleConvert}
+            disabled={loading}
+            className="w-full"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {loading ? "Processing…" : "Export to ZIP"}
+          </PrimaryActionButton>
+        </>
+      )}
+
+      {result && (
+        <ToolResultFooter
+          blob={result}
+          downloadFilename={OUTPUT_FILENAMES.pdfToImageZip}
+          downloadLabel="Download ZIP"
+          secondaryLabel="Convert another PDF"
+          onSecondary={handleClear}
+          emailInputId="pdf-to-image-email"
+          toolLabel="PDF export ZIP"
+        />
+      )}
+    </div>
+  ) : undefined;
+
   return (
     <ToolShell
       icon={FileImage}
       title="PDF to image"
       description="Export each page as an image. Processing runs in your browser; the PDF is not uploaded."
+      rightSidebar={rightSidebar}
     >
-      <Link
-        href={TOOL_ROUTES.convert}
-        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground -mt-4 md:hidden"
-      >
-        <ChevronLeft className="w-3 h-3" />
-        Convert options
-      </Link>
       {!file ? (
-        <FileDropzone
-          onDrop={handleDrop}
-          accept={{ "application/pdf": [".pdf"] }}
-          multiple={false}
-          maxSize={LOCAL_SIZE_WARN_BYTES}
-          label="Drop a PDF here, or click to browse."
-          hint="Accepts PDF · large jobs run on your device · email up to 6 MB"
-          disabled={loading}
-        />
-      ) : (
-        <div className="flex items-center gap-3 px-3 py-3 rounded-lg border border-border bg-card">
-          <div className="flex items-center justify-center w-9 h-9 rounded-md bg-primary/10 shrink-0">
-            <FileText className="w-5 h-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{file.name}</p>
-            <p className="text-xs text-muted-foreground font-mono tabular-nums">
-              {formatBytes(file.size)}
-            </p>
-          </div>
-          <IconTouchButton
-            type="button"
-            onClick={handleClear}
-            aria-label="Remove file"
-            disabled={loading}
+        <ToolLanding>
+          <Link
+            href={TOOL_ROUTES.convert}
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground md:hidden"
           >
-            <X className="w-5 h-5" />
-          </IconTouchButton>
-        </div>
-      )}
-
-      {file && !result && (
-        <>
-          <ImageFormatPicker value={format} onChange={setFormat} />
-          {progress.total > 0 && (
-            <p className="text-sm text-muted-foreground">
-              Rendering page {progress.current} of {progress.total}…
-            </p>
-          )}
-          <ProcessingProgress key={String(loading)} active={loading} />
-          <div className="mobile-sticky-cta">
-            <PrimaryActionButton
-              onClick={handleConvert}
-              disabled={loading}
-              className="w-full"
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {loading ? "Processing…" : "Export to ZIP"}
-            </PrimaryActionButton>
-          </div>
-        </>
-      )}
-
-      {result && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {pageCount} page{pageCount !== 1 ? "s" : ""} exported as{" "}
-            {format.toUpperCase()} ·{" "}
-            <span className="font-mono tabular-nums text-foreground">
-              {formatBytes(result.size)}
-            </span>
-          </p>
-          <ToolResultFooter
-            blob={result}
-            downloadFilename={OUTPUT_FILENAMES.pdfToImageZip}
-            downloadLabel="Download ZIP"
-            secondaryLabel="Convert another PDF"
-            onSecondary={handleClear}
-            emailInputId="pdf-to-image-email"
-            toolLabel="PDF export ZIP"
+            <ChevronLeft className="size-3" />
+            Convert options
+          </Link>
+          <FileDropzone
+            onDrop={handleDrop}
+            accept={{ "application/pdf": [".pdf"] }}
+            multiple={false}
+            maxSize={LOCAL_SIZE_WARN_BYTES}
+            label="Drop a PDF here, or click to browse."
+            hint="Accepts PDF · large jobs run on your device · email up to 6 MB"
+            disabled={loading}
           />
-        </div>
+        </ToolLanding>
+      ) : (
+        <ToolWorkspace>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <FileText className="size-5 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{file.name}</p>
+                <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                  {formatBytes(file.size)}
+                </p>
+              </div>
+              <IconTouchButton
+                type="button"
+                onClick={handleClear}
+                aria-label="Remove file"
+                disabled={loading}
+              >
+                <X className="size-5" />
+              </IconTouchButton>
+            </div>
+
+            {!result && (
+              <>
+                {progress.total > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Rendering page {progress.current} of {progress.total}…
+                  </p>
+                )}
+                <ProcessingProgress key={String(loading)} active={loading} />
+                <div className="mobile-sticky-cta space-y-4 lg:hidden">
+                  <ImageFormatPicker value={format} onChange={setFormat} />
+                  <PrimaryActionButton
+                    onClick={handleConvert}
+                    disabled={loading}
+                    className="w-full"
+                  >
+                    {loading && <Loader2 className="size-4 animate-spin" />}
+                    {loading ? "Processing…" : "Export to ZIP"}
+                  </PrimaryActionButton>
+                </div>
+              </>
+            )}
+
+            {result && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  {pageCount} page{pageCount !== 1 ? "s" : ""} exported as{" "}
+                  {format.toUpperCase()} ·{" "}
+                  <span className="font-mono tabular-nums text-foreground">
+                    {formatBytes(result.size)}
+                  </span>
+                </p>
+                <div className="lg:hidden">
+                  <ToolResultFooter
+                    blob={result}
+                    downloadFilename={OUTPUT_FILENAMES.pdfToImageZip}
+                    downloadLabel="Download ZIP"
+                    secondaryLabel="Convert another PDF"
+                    onSecondary={handleClear}
+                    emailInputId="pdf-to-image-email"
+                    toolLabel="PDF export ZIP"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </ToolWorkspace>
       )}
     </ToolShell>
   );

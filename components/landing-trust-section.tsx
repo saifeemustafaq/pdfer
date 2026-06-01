@@ -110,7 +110,7 @@ const guidelines: Guideline[] = [
     icon: LockKeyhole,
     title: "Password-protected PDFs",
     description:
-      "Encrypted or password-locked PDFs are not supported. Unlock or re-export the file in another app, then try again.",
+      "Use the Unlock PDF tool to remove a password from files you own. Other tools link there when a file is encrypted.",
   },
   {
     icon: Minimize2,

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { AppShell } from "@/components/app-shell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { Toaster } from "@/components/ui/sonner";
@@ -40,7 +41,7 @@ export default function RootLayout({
           <div className="md:hidden fixed top-3 right-3 z-[100]">
             <ThemeToggle />
           </div>
-          {children}
+          <AppShell>{children}</AppShell>
           <MobileTabBar />
           <Toaster richColors position="top-center" />
         </Providers>

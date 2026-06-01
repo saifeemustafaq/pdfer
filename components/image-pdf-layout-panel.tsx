@@ -13,11 +13,10 @@ type ImagePdfLayoutPanelProps = {
   onEnabledChange: (enabled: boolean) => void;
   layout: ImagePdfLayoutOptions;
   onLayoutChange: (layout: ImagePdfLayoutOptions) => void;
-  /** Fixed left sidebar on large screens (merge). Inline card on small screens. */
-  placement?: "sidebar" | "inline";
   disabled?: boolean;
-  /** Shown when placement is sidebar (merge includes PDFs). */
   helperText?: string;
+  /** When true, show copy explaining mixed page sizes were detected. */
+  unevenDimensionsDetected?: boolean;
 };
 
 function LayoutSwitch({
@@ -59,61 +58,14 @@ function LayoutSwitch({
   );
 }
 
-function PanelCard({
-  enabled,
-  onEnabledChange,
-  layout,
-  onLayoutChange,
-  disabled,
-  helperText,
-  switchId,
-}: Omit<ImagePdfLayoutPanelProps, "placement"> & { switchId: string }) {
-  const fitLayout: ImagePdfLayoutOptions = {
-    ...layout,
-    mode: "fit-page",
-  };
-
-  return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1 min-w-0">
-          <label htmlFor={switchId} className="text-sm font-medium leading-tight">
-            Fit images to page
-          </label>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            {helperText ??
-              "Scale photos onto A4 or Letter. Off keeps each image at its original size."}
-          </p>
-        </div>
-        <LayoutSwitch
-          id={switchId}
-          checked={enabled}
-          onCheckedChange={onEnabledChange}
-          disabled={disabled}
-        />
-      </div>
-
-      {enabled && (
-        <div className="space-y-3 pt-2 border-t border-border">
-          <ImagePdfLayoutControls
-            value={fitLayout}
-            onChange={(next) => onLayoutChange({ ...next, mode: "fit-page" })}
-            showModePicker={false}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function ImagePdfLayoutPanel({
   enabled,
   onEnabledChange,
   layout,
   onLayoutChange,
-  placement = "inline",
   disabled = false,
   helperText,
+  unevenDimensionsDetected = false,
 }: ImagePdfLayoutPanelProps) {
   const switchId = "image-layout-enabled";
 
@@ -124,32 +76,53 @@ export function ImagePdfLayoutPanel({
     }
   };
 
-  const card = (
-    <PanelCard
-      enabled={enabled}
-      onEnabledChange={handleEnabledChange}
-      layout={layout}
-      onLayoutChange={onLayoutChange}
-      disabled={disabled}
-      helperText={helperText}
-      switchId={switchId}
-    />
-  );
+  const fitLayout: ImagePdfLayoutOptions = {
+    ...layout,
+    mode: "fit-page",
+  };
 
-  if (placement === "inline") {
-    return card;
-  }
+  const defaultHelper =
+    "Scale photos onto A4 or Letter. Off keeps each image at its original size.";
+  const unevenHelper =
+    "Mixed page sizes detected. Turn this on to fit each image onto a consistent page size.";
 
   return (
-    <>
-      <aside
-        aria-label="Image page layout"
-        className="hidden lg:flex lg:flex-col fixed-layout-sidebar"
-      >
-        {card}
-      </aside>
-      <div className="lg:hidden">{card}</div>
-    </>
+    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+      {unevenDimensionsDetected && !enabled && (
+        <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-foreground">
+          Your files use different page sizes. Enabling this will place every
+          image on the same page dimensions.
+        </p>
+      )}
+
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <label htmlFor={switchId} className="text-sm font-medium leading-tight">
+            {unevenDimensionsDetected ? "Same page size" : "Fit images to page"}
+          </label>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {helperText ??
+              (unevenDimensionsDetected ? unevenHelper : defaultHelper)}
+          </p>
+        </div>
+        <LayoutSwitch
+          id={switchId}
+          checked={enabled}
+          onCheckedChange={handleEnabledChange}
+          disabled={disabled}
+        />
+      </div>
+
+      {enabled && (
+        <div className="space-y-3 border-t border-border pt-2">
+          <ImagePdfLayoutControls
+            value={fitLayout}
+            onChange={(next) => onLayoutChange({ ...next, mode: "fit-page" })}
+            showModePicker={false}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 

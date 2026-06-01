@@ -13,7 +13,9 @@ export type ProcessingOperation =
   | "compress"
   | "image-to-pdf"
   | "pdf-to-image"
-  | "merge-page-edit";
+  | "merge-page-edit"
+  | "split"
+  | "unlock";
 
 export type RoutingContext = {
   operation: ProcessingOperation;

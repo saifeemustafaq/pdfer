@@ -39,6 +39,22 @@ export function decide(context: RoutingContext): RoutingDecision {
     };
   }
 
+  if (operation === "split") {
+    return {
+      mode: "local",
+      reason: "Split runs on your device",
+      serverEligible: false,
+    };
+  }
+
+  if (operation === "unlock") {
+    return {
+      mode: "server",
+      reason: "Unlock runs on the server",
+      serverEligible: serverEligible,
+    };
+  }
+
   if (overServerLimit) {
     return {
       mode: "local",

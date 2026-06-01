@@ -16,6 +16,7 @@ import {
   DestructiveActionButton,
 } from "@/components/app-button";
 import { ToolShell } from "@/components/tool-shell";
+import { ToolLanding, ToolWorkspace } from "@/components/tool-landing";
 import { FileDropzone } from "@/components/file-dropzone";
 import { FileList } from "@/components/file-list";
 import { ProcessingProgress } from "@/components/processing-progress";
@@ -57,6 +58,10 @@ import { useRoutingBadge } from "@/lib/processing/use-routing-badge";
 import type { ProcessingInfo, ProcessingMode } from "@/lib/processing/types";
 import type { StagedFileItem } from "@/types";
 import { cn } from "@/lib/utils";
+import {
+  collectMergeSourceDimensions,
+  hasUnevenPageDimensions,
+} from "@/lib/merge-dimension-preflight";
 
 const PageGrid = dynamic(
   () => import("@/components/page-grid").then((m) => m.PageGrid),
@@ -64,6 +69,7 @@ const PageGrid = dynamic(
 );
 
 const MERGE_DEBOUNCE_MS = 400;
+const DIMENSION_CHECK_MS = 300;
 
 function isPdfFile(file: File): boolean {
   return file.type === "application/pdf";
@@ -94,6 +100,10 @@ export function MergeClient() {
   const [imageLayout, setImageLayout] = useState<ImagePdfLayout>(
     MERGE_IMAGE_LAYOUT_DEFAULT
   );
+  const [dimensionState, setDimensionState] = useState<{
+    loading: boolean;
+    uneven: boolean;
+  }>({ loading: false, uneven: false });
 
   const effectiveImageLayout = useMemo(
     () => resolveImageLayoutForProcessing(imageLayoutEnabled, imageLayout),
@@ -108,6 +118,12 @@ export function MergeClient() {
 
   const files = useMemo(() => items.map((item) => item.file), [items]);
   const hasImages = useMemo(() => files.some(isImageFile), [files]);
+  const showLayoutPanel =
+    hasImages &&
+    items.length > 0 &&
+    (dimensionState.uneven || imageLayoutEnabled);
+  const promptUnevenLayout =
+    dimensionState.uneven && !imageLayoutEnabled && !dimensionState.loading;
   const totalSize = items.reduce((s, i) => s + i.file.size, 0);
   const showWarn = totalSize > UPLOAD_WARN_BYTES;
 
@@ -183,6 +199,38 @@ export function MergeClient() {
 
     return () => window.clearTimeout(timer);
   }, [items, effectiveImageLayout, runAutoMerge]);
+
+  useEffect(() => {
+    if (items.length === 0) {
+      setDimensionState({ loading: false, uneven: false });
+      return;
+    }
+
+    let cancelled = false;
+    setDimensionState((prev) => ({ ...prev, loading: true }));
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const dimensions = await collectMergeSourceDimensions(files);
+        if (!cancelled) {
+          setDimensionState({
+            loading: false,
+            uneven: hasUnevenPageDimensions(dimensions),
+          });
+        }
+      } catch (err) {
+        console.error("merge dimension detection failed:", err);
+        if (!cancelled) {
+          setDimensionState({ loading: false, uneven: false });
+        }
+      }
+    }, DIMENSION_CHECK_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [files, items.length]);
 
   useEffect(() => {
     setExportBlob(null);
@@ -310,9 +358,24 @@ export function MergeClient() {
           ? "…"
           : "…";
 
-  const exportSidebar = (
+  const rightSidebar = (
     <div className="flex flex-col gap-3">
+      {showLayoutPanel && (
+        <ImagePdfLayoutPanel
+          enabled={imageLayoutEnabled}
+          onEnabledChange={setImageLayoutEnabled}
+          layout={imageLayout}
+          onLayoutChange={setImageLayout}
+          disabled={busy}
+          unevenDimensionsDetected={promptUnevenLayout}
+          helperText="Applies to image files only. PDF pages keep their original size."
+        />
+      )}
+
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+        {!mergedBlob && (
+          <p className="text-xs text-muted-foreground">Building preview…</p>
+        )}
         <p className="text-sm font-medium">Download</p>
         <PrimaryActionButton
           type="button"
@@ -413,40 +476,24 @@ export function MergeClient() {
       icon={Combine}
       title="Merge PDFs"
       description="Drop files, reorder them or individual pages, then download or compress."
-      wide
-      className="max-w-6xl"
+      rightSidebar={items.length > 0 ? rightSidebar : undefined}
+      mobileActions={mergedBlob ? rightSidebar : undefined}
     >
       {items.length === 0 ? (
-        <FileDropzone
-          onDrop={handleDrop}
-          accept={IMAGE_TOOL_ACCEPT}
-          multiple
-          maxSize={LOCAL_SIZE_WARN_BYTES}
-          label="Drop PDFs and images here, or click to browse."
-          hint="Accepts PDF, JPEG, PNG, WebP, HEIC · large jobs run on your device"
-          disabled={busy}
-        />
+        <ToolLanding>
+          <FileDropzone
+            onDrop={handleDrop}
+            accept={IMAGE_TOOL_ACCEPT}
+            multiple
+            maxSize={LOCAL_SIZE_WARN_BYTES}
+            label="Drop PDFs and images here, or click to browse."
+            hint="Accepts PDF, JPEG, PNG, WebP, HEIC · large jobs run on your device"
+            disabled={busy}
+          />
+        </ToolLanding>
       ) : (
-        <div className="relative">
-          {hasImages && (
-            <ImagePdfLayoutPanel
-              placement="sidebar"
-              enabled={imageLayoutEnabled}
-              onEnabledChange={setImageLayoutEnabled}
-              layout={imageLayout}
-              onLayoutChange={setImageLayout}
-              disabled={busy}
-              helperText="Applies to image files only. PDF pages stay their original size."
-            />
-          )}
-
-          <div
-            className={cn(
-              "space-y-6 min-w-0 lg:pr-[296px]",
-              hasImages && "lg:pl-[296px]",
-              mergedBlob && "max-lg:pb-96"
-            )}
-          >
+        <ToolWorkspace wide>
+        <div className={cn("space-y-6 min-w-0", mergedBlob && "max-lg:pb-96")}>
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium">
@@ -492,6 +539,20 @@ export function MergeClient() {
                 <FileList items={items} onReorder={setItems} />
               </div>
 
+              {showLayoutPanel && (
+                <div className="lg:hidden">
+                  <ImagePdfLayoutPanel
+                    enabled={imageLayoutEnabled}
+                    onEnabledChange={setImageLayoutEnabled}
+                    layout={imageLayout}
+                    onLayoutChange={setImageLayout}
+                    disabled={busy}
+                    unevenDimensionsDetected={promptUnevenLayout}
+                    helperText="Applies to image files only. PDF pages keep their original size."
+                  />
+                </div>
+              )}
+
             </div>
 
             {mergedBlob ? (
@@ -518,39 +579,19 @@ export function MergeClient() {
                   externalActions
                   onSummaryChange={setPageSummary}
                   onEditSpecChange={handleEditSpecChange}
+                  previewPageSize={
+                    imageLayoutEnabled ? imageLayout.pageSize : "letter"
+                  }
+                  previewOrientation={
+                    imageLayoutEnabled ? imageLayout.orientation : "portrait"
+                  }
                 />
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">Building preview…</p>
             )}
-          </div>
-
-          <aside
-            aria-label="Export options"
-            className="hidden lg:flex lg:flex-col fixed-export-sidebar"
-          >
-            {!mergedBlob && (
-              <p className="text-xs text-muted-foreground mb-3">
-                Building preview…
-              </p>
-            )}
-            {exportSidebar}
-          </aside>
-
-          {mergedBlob && (
-            <aside
-              aria-label="Export options"
-              className={cn(
-                "lg:hidden fixed inset-x-0 z-40 bottom-mobile-nav",
-                "border-t border-border bg-background/95 backdrop-blur-sm",
-                "px-4 py-3 shadow-[0_-4px_20px_oklch(0_0_0/0.06)]",
-                "max-h-[min(70dvh,520px)] overflow-y-auto"
-              )}
-            >
-              {exportSidebar}
-            </aside>
-          )}
         </div>
+        </ToolWorkspace>
       )}
     </ToolShell>
   );

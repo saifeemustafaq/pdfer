@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { QUALITY_PRESETS, type QualityPreset } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -19,34 +20,36 @@ export function QualitySlider({ value, onChange }: QualitySliderProps) {
           const { label, description } = QUALITY_PRESETS[preset];
           const selected = value === preset;
           return (
-            <button
+            <Button
               key={preset}
               type="button"
+              variant={selected ? "default" : "outline"}
               onClick={() => onChange(preset)}
               className={cn(
-                "flex items-start gap-3 text-left px-4 py-3 min-h-[48px] rounded-lg border transition-colors",
-                selected
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-card hover:border-primary/40 hover:bg-muted/50"
+                "h-auto w-full flex items-start gap-3 text-left px-4 py-3 min-h-[48px] whitespace-normal"
               )}
             >
-              <div
-                className={cn(
-                  "mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center",
-                  selected ? "border-primary" : "border-muted-foreground/40"
-                )}
-              >
-                {selected && (
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium">{label}</span>
-                <p className="text-xs text-muted-foreground mt-0.5">
+              <div className="flex-1 min-w-0 text-left">
+                <span
+                  className={cn(
+                    "text-sm font-medium block",
+                    selected ? "text-primary-foreground" : "text-foreground"
+                  )}
+                >
+                  {label}
+                </span>
+                <span
+                  className={cn(
+                    "text-xs block mt-0.5",
+                    selected
+                      ? "text-primary-foreground/80"
+                      : "text-muted-foreground"
+                  )}
+                >
                   {description}
-                </p>
+                </span>
               </div>
-            </button>
+            </Button>
           );
         })}
       </div>

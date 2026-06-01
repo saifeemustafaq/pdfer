@@ -1,6 +1,8 @@
 import {
   ACCEPTED_IMAGE_TYPES,
+  ACCEPTED_JPEG_PNG_TYPES,
   ACCEPTED_PDF_TYPES,
+  MAX_UPLOAD_BYTES,
   QUALITY_PRESET_KEYS,
   type QualityPreset,
 } from "@/lib/constants";
@@ -23,6 +25,27 @@ export function isAcceptedPdfMime(mime: string): boolean {
 
 export function isAcceptedImageMime(mime: string): boolean {
   return (ACCEPTED_IMAGE_TYPES as readonly string[]).includes(mime);
+}
+
+export function isAcceptedJpegPngMime(mime: string): boolean {
+  return (ACCEPTED_JPEG_PNG_TYPES as readonly string[]).includes(mime);
+}
+
+export function isAcceptedMergeMime(mime: string, buffer: Buffer): boolean {
+  if (isPdfBuffer(buffer)) return true;
+  return isAcceptedJpegPngMime(mime);
+}
+
+export function getUploadSizeError(totalBytes: number): string | null {
+  if (totalBytes > MAX_UPLOAD_BYTES) {
+    return "File too large: 6 MB limit";
+  }
+  return null;
+}
+
+export function buildCompressedFilename(originalName: string): string {
+  const base = sanitizeFilename(originalName.replace(/\.pdf$/i, ""));
+  return `compressed-${base}.pdf`;
 }
 
 /** Format bytes as a human-readable string. */

@@ -7,7 +7,7 @@ import { TOOL_ROUTES } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Convert",
-  description: "Convert between PDF and images — image to PDF or PDF to image.",
+  description: "Convert between PDF and images: image to PDF or PDF to image.",
 };
 
 const convertOptions = [

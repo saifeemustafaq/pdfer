@@ -1,6 +1,8 @@
 import { Combine, Minimize2, Images, FileImage } from "lucide-react";
 import { ToolCard } from "@/components/tool-card";
 import { LandingTrustSection } from "@/components/landing-trust-section";
+import { ArchitectureModal } from "@/components/architecture-modal";
+import { GitHubRepoLink } from "@/components/github-repo-link";
 import { TOOL_ROUTES } from "@/lib/constants";
 
 const tools = [
@@ -36,24 +38,24 @@ const tools = [
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-dvh pt-12 pb-16 md:pt-0 md:pb-0">
-      <div className="flex flex-1 flex-col px-4 md:px-6 lg:px-8 py-8 md:py-10 max-w-6xl mx-auto w-full gap-8 md:gap-10">
+    <div className="flex flex-col min-h-dvh pt-12 pb-mobile-nav md:pt-0 md:pb-0">
+      <div className="flex flex-1 flex-col px-4 md:px-6 lg:px-8 py-8 md:py-10 max-w-5xl mx-auto w-full gap-8 md:gap-10">
         {/* Hero */}
         <section className="flex flex-col items-center gap-3 text-center md:flex-row md:items-start md:gap-4 md:text-left md:shrink-0">
           <div className="flex items-center justify-center w-11 h-11 md:w-10 md:h-10 rounded-xl bg-primary/10 text-primary shrink-0 md:mt-0.5">
             <Combine className="w-6 h-6 md:w-5 md:h-5" />
           </div>
           <div className="space-y-2 md:flex-1 max-w-2xl md:max-w-none">
-            <h1 className="text-2xl md:text-[1.65rem] font-bold tracking-tight leading-tight">
+            <h1 className="text-2xl font-bold tracking-tight leading-tight">
               PDF tools that work for you
             </h1>
-            <p className="text-sm md:text-[0.9375rem] text-muted-foreground leading-relaxed">
-              Merge, compress, and convert — no account, no paywall.
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Merge, compress, and convert. No account, no paywall.
             </p>
-            <p className="text-sm md:text-[0.9375rem] text-muted-foreground/90 leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               I built Pdfer because basic PDF tasks kept landing behind
               subscriptions, forced sign-ups, or “free” sites that treat your
-              uploads as the product. Simple tools should stay simple — and
+              uploads as the product. Simple tools should stay simple, and
               leave your documents alone.
             </p>
           </div>
@@ -68,6 +70,11 @@ export default function Home() {
             <ToolCard key={tool.href} {...tool} compact />
           ))}
         </section>
+
+        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3">
+          <ArchitectureModal />
+          <GitHubRepoLink />
+        </div>
 
         <LandingTrustSection />
       </div>

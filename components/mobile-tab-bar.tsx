@@ -36,7 +36,7 @@ export function MobileTabBar() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-50 h-16 border-t border-border bg-background/90 backdrop-blur-sm flex items-center justify-around px-2"
+      className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-border bg-background/90 backdrop-blur-sm flex items-center justify-around px-2 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))]"
       aria-label="Main navigation"
     >
       {tabs.map(({ href, label, icon: Icon, match }) => {

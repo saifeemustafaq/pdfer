@@ -54,7 +54,7 @@ function SortableItem({ item, onRemove, sortable = true }: SortableItemProps) {
       style={style}
       className={cn(
         "flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border bg-card",
-        isDragging && "shadow-sm opacity-80 z-10"
+        isDragging && "ring-2 ring-primary/20 opacity-80 z-10"
       )}
     >
       {sortable && (

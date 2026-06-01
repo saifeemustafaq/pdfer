@@ -8,7 +8,7 @@ export default function ToolsLayout({
   return (
     <>
       <TopNav />
-      <main className="flex-1 flex flex-col pt-12 md:pt-14 pb-16 md:pb-0">
+      <main className="flex-1 flex flex-col pt-12 md:pt-14 pb-mobile-nav md:pb-0">
         {children}
       </main>
     </>

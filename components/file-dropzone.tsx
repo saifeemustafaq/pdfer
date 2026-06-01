@@ -15,6 +15,8 @@ type FileDropzoneProps = {
   hint?: string;
   disabled?: boolean;
   compact?: boolean;
+  /** Stretch to fill parent height (e.g. beside a file list). */
+  fillHeight?: boolean;
   className?: string;
 };
 
@@ -27,6 +29,7 @@ export function FileDropzone({
   hint,
   disabled = false,
   compact = false,
+  fillHeight = false,
   className,
 }: FileDropzoneProps) {
   const handleDrop = useCallback(
@@ -59,7 +62,8 @@ export function FileDropzone({
         },
       })}
       className={cn(
-        "relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed text-center cursor-pointer select-none min-h-[140px] md:min-h-0",
+        "relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed text-center cursor-pointer select-none",
+        fillHeight ? "h-full min-h-[120px]" : "min-h-[140px] md:min-h-0",
         compact ? "p-3 bg-card border-border border-solid" : "p-8 bg-card",
         isDragActive && !isDragReject
           ? "border-primary bg-primary/5"

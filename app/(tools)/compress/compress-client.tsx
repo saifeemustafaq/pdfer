@@ -9,6 +9,7 @@ import {
 } from "@/components/app-button";
 import { Badge } from "@/components/ui/badge";
 import { ToolShell } from "@/components/tool-shell";
+import { ToolLanding, ToolWorkspace } from "@/components/tool-landing";
 import { FileDropzone } from "@/components/file-dropzone";
 import { QualitySlider } from "@/components/quality-slider";
 import { ProcessingProgress } from "@/components/processing-progress";
@@ -120,126 +121,164 @@ export function CompressClient() {
   const minimalSavings =
     result !== null && savings < MIN_MEANINGFUL_SAVINGS_PERCENT;
 
+  const rightSidebar = file ? (
+    <div className="flex flex-col gap-4">
+      {!result && (
+        <>
+          <QualitySlider value={quality} onChange={setQuality} />
+          <PrimaryActionButton
+            onClick={() => handleCompress()}
+            disabled={loading}
+            className="w-full"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {loading ? "Processing…" : "Compress PDF"}
+          </PrimaryActionButton>
+        </>
+      )}
+
+      {result && (
+        <ToolResultFooter
+          blob={result.blob}
+          downloadFilename={result.filename}
+          secondaryLabel="Compress another"
+          onSecondary={handleClear}
+          emailInputId="compress-email"
+          toolLabel="compressed PDF"
+        />
+      )}
+    </div>
+  ) : undefined;
+
   return (
     <ToolShell
       icon={Minimize2}
       title="Compress PDF"
       description="Upload a PDF, choose a quality preset, and download the compressed version."
+      rightSidebar={rightSidebar}
     >
       {!file ? (
-        <FileDropzone
-          onDrop={handleDrop}
-          accept={{ "application/pdf": [".pdf"] }}
-          multiple={false}
-          maxSize={LOCAL_SIZE_WARN_BYTES}
-          label="Drop a PDF here, or click to browse."
-          hint="Accepts PDF · large jobs run on your device"
-          disabled={loading}
-        />
+        <ToolLanding>
+          <FileDropzone
+            onDrop={handleDrop}
+            accept={{ "application/pdf": [".pdf"] }}
+            multiple={false}
+            maxSize={LOCAL_SIZE_WARN_BYTES}
+            label="Drop a PDF here, or click to browse."
+            hint="Accepts PDF · large jobs run on your device"
+            disabled={loading}
+          />
+        </ToolLanding>
       ) : (
-        <div className="flex items-center gap-3 px-3 py-3 rounded-lg border border-border bg-card">
-          <div className="flex items-center justify-center w-9 h-9 rounded-md bg-primary/10 shrink-0">
-            <FileText className="w-5 h-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{file.name}</p>
-            <p className="text-xs text-muted-foreground font-mono tabular-nums">
-              {formatBytes(file.size)}
-            </p>
-          </div>
-          <IconTouchButton
-            type="button"
-            onClick={handleClear}
-            aria-label="Remove file"
-          >
-            <X className="w-5 h-5" />
-          </IconTouchButton>
-        </div>
-      )}
-
-      {file && !result && (
-        <>
-          <QualitySlider value={quality} onChange={setQuality} />
-          <HybridProcessingFeedback
-            operation="compress"
-            files={files}
-            showWarn={showWarn}
-            processingInfo={badgeInfo}
-            fallback={fallback}
-            active={loading}
-            onRetryServer={() => handleCompress("server")}
-            onRetryLocal={() => handleCompress("local")}
-            progressKey={String(loading)}
-          />
-          <div className="mobile-sticky-cta">
-            <PrimaryActionButton
-              onClick={() => handleCompress()}
-              disabled={loading}
-              className="w-full"
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {loading ? "Processing…" : "Compress PDF"}
-            </PrimaryActionButton>
-          </div>
-        </>
-      )}
-
-      {result && (
-        <div className="space-y-4">
-          {processingInfo && (
-            <ProcessingBadge
-              mode={processingInfo.mode}
-              reason={processingInfo.reason}
-            />
-          )}
-
-          <div className="flex items-center gap-2 text-sm font-medium text-success">
-            <CheckCircle2 className="w-4 h-4" />
-            Done. Downloading…
-          </div>
-
-          {minimalSavings && (
-            <p className="text-xs text-muted-foreground">
-              This PDF is mostly text or already optimized. Savings may be
-              minimal.
-            </p>
-          )}
-
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-lg border border-border bg-muted/30 px-3 py-3">
-              <p className="text-xs text-muted-foreground mb-1">Original</p>
-              <p className="text-sm font-semibold font-mono tabular-nums">
-                {formatBytes(result.originalSize)}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-muted/30 px-3 py-3">
-              <p className="text-xs text-muted-foreground mb-1">Compressed</p>
-              <p className="text-sm font-semibold font-mono tabular-nums">
-                {formatBytes(result.compressedSize)}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-success/10 px-3 py-3">
-              <p className="text-xs text-muted-foreground mb-1">Saved</p>
-              <Badge
-                variant="secondary"
-                className="bg-success/10 text-success border-0"
+        <ToolWorkspace>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <FileText className="size-5 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{file.name}</p>
+                <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                  {formatBytes(file.size)}
+                </p>
+              </div>
+              <IconTouchButton
+                type="button"
+                onClick={handleClear}
+                aria-label="Remove file"
               >
-                –{savings}% smaller
-              </Badge>
+                <X className="size-5" />
+              </IconTouchButton>
             </div>
+
+            {!result && (
+              <>
+                <HybridProcessingFeedback
+                  operation="compress"
+                  files={files}
+                  showWarn={showWarn}
+                  processingInfo={badgeInfo}
+                  fallback={fallback}
+                  active={loading}
+                  onRetryServer={() => handleCompress("server")}
+                  onRetryLocal={() => handleCompress("local")}
+                  progressKey={String(loading)}
+                />
+                <div className="mobile-sticky-cta lg:hidden">
+                  <QualitySlider value={quality} onChange={setQuality} />
+                  <PrimaryActionButton
+                    onClick={() => handleCompress()}
+                    disabled={loading}
+                    className="mt-4 w-full"
+                  >
+                    {loading && <Loader2 className="size-4 animate-spin" />}
+                    {loading ? "Processing…" : "Compress PDF"}
+                  </PrimaryActionButton>
+                </div>
+              </>
+            )}
+
+            {result && (
+              <>
+                {processingInfo && (
+                  <ProcessingBadge
+                    mode={processingInfo.mode}
+                    reason={processingInfo.reason}
+                  />
+                )}
+
+                <div className="flex items-center gap-2 text-sm font-medium text-success">
+                  <CheckCircle2 className="size-4" />
+                  Done. Downloading…
+                </div>
+
+                {minimalSavings && (
+                  <p className="text-xs text-muted-foreground">
+                    This PDF is mostly text or already optimized. Savings may be
+                    minimal.
+                  </p>
+                )}
+
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="rounded-lg border border-border bg-muted/30 px-3 py-3">
+                    <p className="mb-1 text-xs text-muted-foreground">Original</p>
+                    <p className="font-mono text-sm font-semibold tabular-nums">
+                      {formatBytes(result.originalSize)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 px-3 py-3">
+                    <p className="mb-1 text-xs text-muted-foreground">Compressed</p>
+                    <p className="font-mono text-sm font-semibold tabular-nums">
+                      {formatBytes(result.compressedSize)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-success/10 px-3 py-3">
+                    <p className="mb-1 text-xs text-muted-foreground">Saved</p>
+                    <Badge
+                      variant="secondary"
+                      className="border-0 bg-success/10 text-success"
+                    >
+                      –{savings}% smaller
+                    </Badge>
+                  </div>
+                </div>
+
+                <ProcessingProgress active={false} success={done} />
+
+                <div className="lg:hidden">
+                  <ToolResultFooter
+                    blob={result.blob}
+                    downloadFilename={result.filename}
+                    secondaryLabel="Compress another"
+                    onSecondary={handleClear}
+                    emailInputId="compress-email"
+                    toolLabel="compressed PDF"
+                  />
+                </div>
+              </>
+            )}
           </div>
-
-          <ProcessingProgress active={false} success={done} />
-
-          <ToolResultFooter
-            blob={result.blob}
-            downloadFilename={result.filename}
-            secondaryLabel="Compress another"
-            onSecondary={handleClear}
-            emailInputId="compress-email"
-            toolLabel="compressed PDF"
-          />
-        </div>
+        </ToolWorkspace>
       )}
     </ToolShell>
   );

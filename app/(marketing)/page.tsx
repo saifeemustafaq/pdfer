@@ -1,4 +1,4 @@
-import { Combine, Minimize2, Images, FileImage, LayoutGrid } from "lucide-react";
+import { Combine, Minimize2, Images, FileImage, LayoutGrid, Scissors, LockKeyhole } from "lucide-react";
 import { ToolCard } from "@/components/tool-card";
 import { LandingTrustSection } from "@/components/landing-trust-section";
 import { ArchitectureModal } from "@/components/architecture-modal";
@@ -15,6 +15,14 @@ const tools = [
     actionLabel: "Combine files",
   },
   {
+    href: TOOL_ROUTES.split,
+    icon: Scissors,
+    jobLabel: "Pull pages out",
+    title: "Split PDF",
+    description: "Extract a page range, split every N pages, or pick pages.",
+    actionLabel: "Split PDF",
+  },
+  {
     href: TOOL_ROUTES.compress,
     icon: Minimize2,
     jobLabel: "Shrink for email",
@@ -25,10 +33,10 @@ const tools = [
   {
     href: TOOL_ROUTES.editPdf,
     icon: LayoutGrid,
-    jobLabel: "Fix page order",
+    jobLabel: "Edit PDF",
     title: "Edit PDF",
-    description: "Reorder, remove, or rotate pages in one PDF.",
-    actionLabel: "Edit pages",
+    description: "Reorder pages, watermark, fill forms, or sign.",
+    actionLabel: "Edit PDF",
   },
   {
     href: TOOL_ROUTES.imageToPdf,
@@ -46,11 +54,19 @@ const tools = [
     description: "Export each page as JPEG or PNG in a ZIP.",
     actionLabel: "Export pages",
   },
+  {
+    href: TOOL_ROUTES.unlock,
+    icon: LockKeyhole,
+    jobLabel: "Remove password",
+    title: "Unlock PDF",
+    description: "Remove a password from a PDF you own.",
+    actionLabel: "Unlock PDF",
+  },
 ] as const;
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-dvh pt-12 pb-mobile-nav md:pt-0 md:pb-0">
+    <div className="flex flex-col min-h-dvh pt-12 md:pt-0">
       <div className="flex flex-1 flex-col px-4 md:px-6 lg:px-8 py-8 md:py-10 max-w-5xl mx-auto w-full gap-8 md:gap-10">
         {/* Hero */}
         <section className="flex flex-col items-center gap-3 text-center md:flex-row md:items-start md:gap-4 md:text-left md:shrink-0">

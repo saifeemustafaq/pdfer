@@ -24,10 +24,38 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { PrimaryActionButton, IconTouchButton } from "@/components/app-button";
 import type { PageEditSpec } from "@/lib/pdf-client";
+import {
+  resolvePageDimensions,
+  type PageOrientation,
+  type PageSizeKey,
+} from "@/lib/image-pdf-layout";
 
 PDFJS.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 const THUMB_WIDTH = 140;
+
+function getThumbFrameDimensions(
+  pageSize: PageSizeKey,
+  orientation: PageOrientation
+): { width: number; height: number } {
+  const page = resolvePageDimensions(pageSize, orientation);
+  return {
+    width: THUMB_WIDTH,
+    height: Math.round(THUMB_WIDTH * (page.height / page.width)),
+  };
+}
+
+function computeThumbRenderScale(
+  viewportWidth: number,
+  viewportHeight: number,
+  frameWidth: number,
+  frameHeight: number
+): number {
+  return Math.min(
+    frameWidth / viewportWidth,
+    frameHeight / viewportHeight
+  );
+}
 
 /** Solid, bordered controls on top of page thumbnails. */
 const PAGE_ACTION_BUTTON_CLASS =
@@ -59,22 +87,33 @@ type PageGridProps = {
   pdfBlob: Blob;
   /** When true, parent owns download actions. */
   externalActions?: boolean;
+  /** Extract mode: no reorder or rotate, selection only. */
+  selectionOnly?: boolean;
   onConfirm?: (spec: PageEditSpec) => void;
   onSummaryChange?: (summary: PageGridSummary) => void;
   onEditSpecChange?: (spec: PageEditSpec) => void;
   loading?: boolean;
+  /** Preview slot page size. Defaults to US Letter. */
+  previewPageSize?: PageSizeKey;
+  previewOrientation?: PageOrientation;
 };
 
 function SortablePageThumb({
   thumb,
+  frameWidth,
+  frameHeight,
   isRemoved,
   rotationDegrees,
+  selectionOnly,
   onToggleRemove,
   onRotate,
 }: {
   thumb: PageThumb;
+  frameWidth: number;
+  frameHeight: number;
   isRemoved: boolean;
   rotationDegrees: number;
+  selectionOnly?: boolean;
   onToggleRemove: (sourceIndex: number) => void;
   onRotate: (sourceIndex: number) => void;
 }) {
@@ -85,7 +124,7 @@ function SortablePageThumb({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: thumb.id });
+  } = useSortable({ id: thumb.id, disabled: selectionOnly });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -95,31 +134,38 @@ function SortablePageThumb({
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, width: frameWidth }}
       {...attributes}
-      {...listeners}
+      {...(selectionOnly ? {} : listeners)}
       className={cn(
-        "relative rounded-md overflow-hidden border-2 bg-card touch-none cursor-grab active:cursor-grabbing",
+        "relative shrink-0 rounded-md overflow-hidden border-2 bg-card touch-none",
+        selectionOnly ? "cursor-default" : "cursor-grab active:cursor-grabbing touch-none",
         isDragging && "z-10 ring-2 ring-primary/20 opacity-90 cursor-grabbing",
         isRemoved
           ? "border-destructive opacity-40"
           : "border-border hover:border-primary"
       )}
-      aria-label={`Page ${thumb.sourceIndex + 1}. Drag to reorder.`}
+      aria-label={
+        selectionOnly
+          ? `Page ${thumb.sourceIndex + 1}. Tap to ${isRemoved ? "include" : "exclude"}.`
+          : `Page ${thumb.sourceIndex + 1}. Drag to reorder.`
+      }
     >
       <div className="absolute top-0 right-0 z-10 flex gap-1 p-1 pointer-events-auto">
-        <IconTouchButton
-          type="button"
-          className={PAGE_ROTATE_BUTTON_CLASS}
-          aria-label={`Rotate page ${thumb.sourceIndex + 1} clockwise`}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onRotate(thumb.sourceIndex);
-          }}
-        >
-          <RotateCw className="w-4 h-4" />
-        </IconTouchButton>
+        {!selectionOnly && (
+          <IconTouchButton
+            type="button"
+            className={PAGE_ROTATE_BUTTON_CLASS}
+            aria-label={`Rotate page ${thumb.sourceIndex + 1} clockwise`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRotate(thumb.sourceIndex);
+            }}
+          >
+            <RotateCw className="w-4 h-4" />
+          </IconTouchButton>
+        )}
         <IconTouchButton
           type="button"
           className={PAGE_REMOVE_BUTTON_CLASS}
@@ -134,22 +180,27 @@ function SortablePageThumb({
         </IconTouchButton>
       </div>
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={thumb.dataUrl}
-        alt={`Page ${thumb.sourceIndex + 1}`}
-        className="w-full h-auto block pointer-events-none origin-center"
-        style={{
-          transform: rotationDegrees ? `rotate(${rotationDegrees}deg)` : undefined,
-        }}
-        draggable={false}
-      />
-      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[10px] font-medium px-1.5 py-0.5 rounded tabular-nums">
-        {thumb.sourceIndex + 1}
-      </span>
+      <div
+        className="relative flex items-center justify-center bg-muted/30"
+        style={{ width: frameWidth, height: frameHeight }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={thumb.dataUrl}
+          alt={`Page ${thumb.sourceIndex + 1}`}
+          className="max-h-full max-w-full object-contain pointer-events-none origin-center"
+          style={{
+            transform: rotationDegrees ? `rotate(${rotationDegrees}deg)` : undefined,
+          }}
+          draggable={false}
+        />
+        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white">
+          {thumb.sourceIndex + 1}
+        </span>
+      </div>
       {isRemoved && (
         <div className="absolute inset-0 flex items-center justify-center bg-destructive/20 pointer-events-none">
-          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-destructive text-white">
+          <div className="flex size-8 items-center justify-center rounded-full bg-destructive text-white">
             <X className="w-4 h-4" />
           </div>
         </div>
@@ -189,11 +240,15 @@ function buildPageEditSpec(
 export function PageGrid({
   pdfBlob,
   externalActions = false,
+  selectionOnly = false,
   onConfirm,
   onSummaryChange,
   onEditSpecChange,
   loading,
+  previewPageSize = "letter",
+  previewOrientation = "portrait",
 }: PageGridProps) {
+  const frame = getThumbFrameDimensions(previewPageSize, previewOrientation);
   const [thumbs, setThumbs] = useState<PageThumb[]>([]);
   const [removed, setRemoved] = useState<Set<number>>(new Set());
   const [rotations, setRotations] = useState<Map<number, number>>(new Map());
@@ -244,7 +299,12 @@ export function PageGrid({
           if (cancelled) break;
           const page = await pdf.getPage(i);
           const viewport = page.getViewport({ scale: 1 });
-          const scale = THUMB_WIDTH / viewport.width;
+          const scale = computeThumbRenderScale(
+            viewport.width,
+            viewport.height,
+            frame.width,
+            frame.height
+          );
           const scaled = page.getViewport({ scale });
 
           const canvas = document.createElement("canvas");
@@ -279,7 +339,7 @@ export function PageGrid({
     return () => {
       cancelled = true;
     };
-  }, [pdfBlob]);
+  }, [pdfBlob, frame.width, frame.height]);
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -331,7 +391,9 @@ export function PageGrid({
           </p>
           {removed.size > 0 && (
             <Badge variant="destructive" className="text-xs">
-              {removed.size} marked for removal
+              {selectionOnly
+                ? `${removed.size} excluded`
+                : `${removed.size} marked for removal`}
             </Badge>
           )}
         </div>
@@ -348,8 +410,9 @@ export function PageGrid({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Drag any page to reorder. Tap X to remove a page. Tap rotate to turn a
-        page.
+        {selectionOnly
+          ? "Tap X to exclude a page from the extract. Untouched pages are included."
+          : "Drag any page to reorder. Tap X to remove a page. Tap rotate to turn a page."}
       </p>
 
       {renderError && (
@@ -366,17 +429,20 @@ export function PageGrid({
           strategy={rectSortingStrategy}
         >
           <div
-            className="grid gap-2"
+            className="grid items-start justify-start gap-2"
             style={{
-              gridTemplateColumns: `repeat(auto-fill, minmax(${THUMB_WIDTH}px, 1fr))`,
+              gridTemplateColumns: `repeat(auto-fill, ${frame.width}px)`,
             }}
           >
             {thumbs.map((thumb) => (
               <SortablePageThumb
                 key={thumb.id}
                 thumb={thumb}
+                frameWidth={frame.width}
+                frameHeight={frame.height}
                 isRemoved={removed.has(thumb.sourceIndex)}
                 rotationDegrees={rotations.get(thumb.sourceIndex) ?? 0}
+                selectionOnly={selectionOnly}
                 onToggleRemove={toggleRemove}
                 onRotate={rotatePage}
               />

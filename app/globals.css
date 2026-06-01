@@ -223,23 +223,29 @@
       backdrop-filter: none;
     }
   }
-}
 
-/* Fixed tool sidebars — outside @layer so top offset is never overridden */
-@media (min-width: 1024px) {
-  .fixed-export-sidebar {
-    position: fixed;
-    top: calc(3.5rem + 2rem);
-    width: 280px;
-    z-index: 30;
-    right: max(2rem, calc((100vw - 72rem) / 2 + 2rem));
+  /* PDF page preview frames (edit tools) — dimensions via CSS variable bridging */
+  .pdf-preview-frame {
+    width: calc(var(--pdf-preview-w, 0) * 1px);
+    height: calc(var(--pdf-preview-h, 0) * 1px);
+  }
+  .pdf-preview-overlay-signature {
+    left: var(--sig-left, 0%);
+    bottom: var(--sig-bottom, 0%);
+    width: var(--sig-width, 35%);
+  }
+  .pdf-preview-overlay-watermark {
+    font-size: calc(var(--wm-font-size, 16) * 1px);
+    opacity: var(--wm-opacity, 0.3);
+  }
+  .pdf-preview-overlay-watermark--rotated {
+    transform: rotate(var(--wm-rotate, 0deg));
   }
 
-  .fixed-layout-sidebar {
-    position: fixed;
-    top: calc(3.5rem + 2rem);
-    width: 280px;
-    z-index: 30;
-    left: max(2rem, calc((100vw - 72rem) / 2 + 2rem));
+  .signature-pad-grid {
+    background-image:
+      linear-gradient(to right, var(--border) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+    background-size: 24px 24px;
   }
 }

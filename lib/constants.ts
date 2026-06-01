@@ -74,16 +74,19 @@ export const API_ROUTES = {
   merge: "/api/merge",
   compress: "/api/compress",
   imageToPdf: "/api/image-to-pdf",
+  unlock: "/api/unlock",
   sendResult: "/api/send-result",
 } as const;
 
 export const TOOL_ROUTES = {
   merge: "/merge",
+  split: "/split",
   compress: "/compress",
   convert: "/convert",
   imageToPdf: "/image-to-pdf",
   pdfToImage: "/pdf-to-image",
   editPdf: "/edit-pdf",
+  unlock: "/unlock",
 } as const;
 
 /** Public source repository (update if the repo moves). */
@@ -91,11 +94,34 @@ export const GITHUB_REPO_URL = "https://github.com/saifeemustafaq/pdfer" as cons
 
 export const OUTPUT_FILENAMES = {
   merge: "merged.pdf",
+  split: "extracted.pdf",
+  splitZip: "split-pages.zip",
   compress: "compressed.pdf",
   imageToPdf: "converted.pdf",
   pdfToImageZip: "pdf-pages.zip",
   editPdf: "edited.pdf",
+  unlock: "unlocked.pdf",
 } as const;
+
+/** Preset ink colors for drawn signatures (exported into PNG alpha). */
+export const SIGNATURE_INK_COLORS = {
+  black: "#1a1a1a",
+  blue: "#1d4ed8",
+  red: "#dc2626",
+} as const;
+
+export type SignatureInkPreset = keyof typeof SIGNATURE_INK_COLORS;
+
+export const DEFAULT_SIGNATURE_INK_COLOR = SIGNATURE_INK_COLORS.black;
+
+export const SIGNATURE_INK_PRESET_OPTIONS: {
+  id: SignatureInkPreset;
+  label: string;
+}[] = [
+  { id: "black", label: "Black" },
+  { id: "blue", label: "Blue" },
+  { id: "red", label: "Red" },
+];
 
 export type PdfImageFormat = "jpeg" | "png";
 

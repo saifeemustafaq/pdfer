@@ -43,51 +43,80 @@ All server-side PDF operations (merge, compress, image-to-PDF) are handled in No
 pdfer/
 ├── app/
 │   ├── (marketing)/
-│   │   ├── layout.tsx                  # Desktop theme toggle on landing
+│   │   ├── layout.tsx                  # Landing layout (theme toggle)
 │   │   └── page.tsx                    # Landing: hero, tool cards, architecture modal, trust section
 │   ├── (tools)/
-│   │   ├── layout.tsx                  # Tool shell: TopNav (desktop) + pb for mobile tab bar
+│   │   ├── layout.tsx                  # Tool route group shell
 │   │   ├── merge/                      # Merge PDFs + images; client page reorder step
+│   │   ├── split/                      # Split PDF: ranges, every-N ZIP, extract pages
 │   │   ├── compress/                   # Compress PDF with quality presets
 │   │   ├── convert/                    # Hub linking image-to-PDF and PDF-to-image
-│   │   ├── edit-pdf/                   # Reorder, remove, rotate pages (browser only)
+│   │   ├── edit-pdf/                   # Reorder/remove/rotate + watermark + sign/fill (browser)
 │   │   ├── image-to-pdf/               # Images → multi-page PDF (hybrid)
-│   │   └── pdf-to-image/               # PDF pages → ZIP of images (browser)
+│   │   ├── pdf-to-image/               # PDF pages → ZIP of images (browser)
+│   │   └── unlock/                     # Remove PDF password (server pdf-lib rewrite)
 │   ├── api/
 │   │   ├── merge/route.ts              # POST multipart: PDFs + images → merged PDF
 │   │   ├── compress/route.ts           # POST multipart: PDF + quality → compressed PDF
 │   │   ├── image-to-pdf/route.ts       # POST multipart: images → PDF
+│   │   ├── unlock/route.ts             # POST multipart: encrypted PDF + password → unlocked PDF
 │   │   └── send-result/route.ts        # POST multipart: email delivery of result blob
-│   ├── layout.tsx                      # Root layout (Inter, ThemeProvider, Toaster, MobileTabBar)
+│   ├── layout.tsx                      # Root layout (Inter, ThemeProvider, AppShell, Toaster)
 │   ├── error.tsx                       # Root error boundary
-│   └── globals.css                     # Tailwind v4 + shadcn theme tokens + layout utilities (pb-mobile-nav, fixed-export-sidebar)
+│   └── globals.css                     # Tailwind v4 + shadcn theme tokens + layout utilities
 ├── components/
 │   ├── ui/                             # shadcn-generated UI primitives (do not modify)
 │   ├── app-button.tsx                  # PrimaryActionButton, SecondaryActionButton, …
+│   ├── app-shell.tsx                   # Sidebar + main content wrapper
+│   ├── app-sidebar.tsx                 # Desktop sidebar nav (all tools)
 │   ├── architecture-modal.tsx          # Landing-page developer architecture dialog
-│   ├── file-dropzone.tsx               # react-dropzone wrapper (all tools)
+│   ├── edit-pdf-tab-bar.tsx            # Edit PDF: Pages | Watermark | Sign & fill tabs
+│   ├── file-dropzone.tsx               # react-dropzone wrapper (primary file staging)
+│   ├── file-picker-button.tsx          # react-dropzone button trigger (camera, signature upload)
 │   ├── file-list.tsx                   # Drag-to-reorder staged files
-│   ├── page-grid.tsx                   # Thumbnail grid: reorder, remove, rotate pages
+│   ├── page-grid.tsx                   # Thumbnail grid: reorder, remove, rotate, selection mode
+│   ├── pdf-form-fill-panel.tsx         # Edit PDF: AcroForm field fill controls
+│   ├── pdf-form-sign-panel.tsx         # Edit PDF: composes form fill + signature panels
+│   ├── pdf-page-preview-frame.tsx      # Shared PDF page preview shell (watermark, signature)
+│   ├── pdf-signature-options-panel.tsx # Edit PDF: signature pad, placement, upload
+│   ├── pdf-signature-preview.tsx       # Edit PDF: live signature placement preview
+│   ├── signature-draggable-overlay.tsx # Edit PDF: drag/resize signature on preview
+│   ├── signature-page-scope-panel.tsx  # Edit PDF: all/range/pick pages + per-page toggle
+│   ├── pdf-watermark-panel.tsx         # Edit PDF: watermark enable + options
+│   ├── pdf-watermark-preview.tsx       # Edit PDF: live watermark preview
+│   ├── signature-pad.tsx               # Canvas signature capture
+│   ├── split-options-panel.tsx         # Split PDF: mode + range controls
 │   ├── image-pdf-layout-options.tsx    # Image-to-PDF: native vs fit-to-page controls
 │   ├── landing-trust-section.tsx       # Privacy pillars, processing steps, guidelines
 │   ├── quality-slider.tsx              # Compression preset picker
 │   ├── download-button.tsx             # Blob download trigger
-│   ├── email-delivery-form.tsx           # Email result delivery (6 MB cap)
+│   ├── email-delivery-form.tsx         # Email result delivery (6 MB cap)
 │   ├── hybrid-processing-feedback.tsx  # Upload notice + badge + fallback + progress
 │   ├── tool-result-footer.tsx          # Download + secondary action + email card
+│   ├── tool-shell.tsx                  # Shared tool page chrome (title, actions, result)
+│   ├── tool-landing.tsx                # Tool landing hero + dropzone entry
 │   ├── processing-badge.tsx            # "On your device" / "On server" badge
 │   ├── processing-fallback.tsx         # Retry UI after local/server failure
 │   ├── upload-size-notice.tsx          # Size warning + hybrid routing context
 │   ├── size-warning.tsx                # Shared size warning copy
-│   ├── top-nav.tsx                     # Desktop nav (all tools + theme toggle)
-│   └── mobile-tab-bar.tsx              # Mobile bottom tabs (Home, Merge, Compress, Convert)
+│   └── mobile-tab-bar.tsx              # Mobile bottom tabs (Home + primary tools)
+├── hooks/
+│   ├── use-mobile.ts                   # Viewport breakpoint helper
+│   └── use-pdf-page-preview.ts         # pdf.js page rasterisation for edit previews
 ├── lib/
 │   ├── constants.ts                    # MAX_SERVER_UPLOAD_BYTES, presets, routes, MIME lists
+│   ├── tool-nav.ts                     # Sidebar/mobile nav items (icons, routes)
 │   ├── download-client.ts              # triggerBlobDownload() for client downloads
 │   ├── email-client.ts                 # sendResultByEmail() → POST /api/send-result
 │   ├── email-utils.ts                  # Email validation helpers
 │   ├── file-utils.ts                   # MIME guards, size validation, staged IDs, readFormFile()
 │   ├── pdf-client.ts                   # Browser: exportEditedPdf (reorder/remove/rotate)
+│   ├── pdf-edit-export.ts              # Edit PDF: composable export pipeline (pages/watermark/sign)
+│   ├── pdf-form-sign.ts                # AcroForm detect/fill + signature overlay placement
+│   ├── pdf-split.ts                    # Browser: split PDF by range, every-N, extract
+│   ├── pdf-watermark.ts                # Watermark layout + pdf-lib embedding
+│   ├── signature-image.ts              # Canvas/file → trimmed PNG signature bytes
+│   ├── merge-dimension-preflight.ts    # Merge: page dimension mismatch warnings
 │   ├── image-pdf-layout.ts             # Shared page size / margin layout math
 │   ├── image-pdf-embed.ts              # Embed normalized JPEG onto PDF pages
 │   ├── pdf-export.ts                   # Browser: PDF → image ZIP (pdfjs-dist + jszip)
@@ -108,13 +137,15 @@ pdfer/
 │   │   │   ├── fetch.ts                # postFormData / postFormDataBlob (shared error handling)
 │   │   │   ├── merge.ts                # fetch POST /api/merge
 │   │   │   ├── image-to-pdf.ts         # fetch POST /api/image-to-pdf
-│   │   │   └── compress.ts             # fetch POST /api/compress
+│   │   │   ├── compress.ts             # fetch POST /api/compress
+│   │   │   └── unlock.ts               # fetch POST /api/unlock
 │   │   └── worker/
 │   │       ├── client.ts               # run*InWorker() with progress + timeout
 │   │       └── merge.worker.ts         # Worker entry (bundled to public/workers/)
 │   ├── services/
 │   │   ├── pdf-merger.ts               # Server: merge PDFs/images (pdf-lib + sharp)
 │   │   ├── pdf-compressor.ts           # Server: re-encode embedded images (pdf-lib + sharp)
+│   │   ├── pdf-unlocker.ts             # Server: rewrite PDF without encryption (pdf-lib)
 │   │   ├── image-to-pdf.ts             # Server: images → PDF pages (pdf-lib + sharp)
 │   │   └── email-delivery.ts           # Server: Nodemailer send for /api/send-result
 │   └── utils.ts                        # cn() helper
@@ -495,7 +526,7 @@ See [DESIGN_GUIDE.md §4.5](DESIGN_GUIDE.md#45-no-em-dashes) for voice and examp
   <div className={cn("border-2", isDragging ? "border-primary" : "border-muted")}>
   ```
 
-- **Inline styles** — Avoid. Use Tailwind utility classes exclusively. The only exceptions are shadcn-generated files that use inline `style` for CSS variable bridging.
+- **Inline styles** — Avoid. Use Tailwind utility classes exclusively. The only exceptions are shadcn-generated files and **CSS variable bridging** for dynamic values (preview frame dimensions, overlay placement). Put the visual rules in `globals.css`; set `--pdf-preview-w`, `--sig-left`, etc. on the element via `style`.
 
 ---
 
@@ -600,8 +631,9 @@ FormData (files[]) → validate MIMEs + sizes → image-to-pdf.ts
 
 ## 20. Client-side file handling
 
-- **`react-dropzone`** is the sole file input mechanism. Do not use `<input type="file">` directly — all file selection goes through `FileDropzone`.
-- **`FileDropzone`** accepts a `accept` prop (MIME type map), a `maxSize` prop (set to `MAX_UPLOAD_BYTES`), and an `onDrop` callback. The component is **not** tool-specific — configure it via props.
+- **`react-dropzone`** is the sole file input mechanism. Do not use raw `<input type="file">` in feature code.
+- **`FileDropzone`** — Primary staging UI (drag-and-drop + click). Accepts `accept`, `maxSize` (`MAX_UPLOAD_BYTES`), `onDrop`, optional `capture` for mobile camera on the main drop target.
+- **`FilePickerButton`** — Secondary pickers triggered by a button (camera on image-to-PDF, signature image upload). Wraps the same dropzone API with `noClick: true`; the button calls `open()`.
 - **`FileList`** renders the list of staged files with drag-to-reorder (for merge and image-to-pdf). It emits an `onReorder` callback with the new ordered array. It is **not** tool-specific.
 - **Download flow** — On successful API response, call `response.blob()`, create an object URL via `URL.createObjectURL`, and trigger a synthetic `<a download>` click. Release the object URL with `URL.revokeObjectURL` after the click fires.
 

@@ -9,6 +9,7 @@ import {
   DestructiveActionButton,
 } from "@/components/app-button";
 import { ToolShell } from "@/components/tool-shell";
+import { ToolLanding, ToolWorkspace } from "@/components/tool-landing";
 import { FileDropzone } from "@/components/file-dropzone";
 import { FileList } from "@/components/file-list";
 import { ProcessingBadge } from "@/components/processing-badge";
@@ -116,67 +117,18 @@ export function ImageToPdfClient() {
     setFallback(null);
   }
 
-  return (
-    <ToolShell
-      icon={Images}
-      title="Image to PDF"
-      description="Upload images in the order you want them. Each image becomes one page."
-    >
-      <Link
-        href={TOOL_ROUTES.convert}
-        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground -mt-4 md:hidden"
-      >
-        <ChevronLeft className="w-3 h-3" />
-        Convert options
-      </Link>
-      <FileDropzone
-        onDrop={handleDrop}
-        accept={IMAGE_TO_PDF_ACCEPT}
-        multiple
-        maxSize={LOCAL_SIZE_WARN_BYTES}
-        compact={items.length > 0}
-        label="Drop images here, or click to browse."
-        hint="Accepts JPEG, PNG, WebP, HEIC · large jobs run on your device"
-        disabled={loading}
-      />
-
-      {items.length > 0 && !result && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">
-              {items.length} image{items.length !== 1 ? "s" : ""}
-              <span className="text-muted-foreground font-normal font-mono tabular-nums ml-2">
-                ({formatBytes(totalSize)})
-              </span>
-            </p>
-            <DestructiveActionButton type="button" onClick={handleReset}>
-              Clear all
-            </DestructiveActionButton>
-          </div>
-
-          <HybridProcessingFeedback
-            operation="image-to-pdf"
-            files={files}
-            showWarn={showWarn}
-            processingInfo={badgeInfo}
-            fallback={fallback}
-            active={loading}
-            onRetryServer={() => handleConvert("server")}
-            onRetryLocal={() => handleConvert("local")}
-            progressKey={String(loading)}
-          />
-          <FileList items={items} onReorder={setItems} />
-
-          <ImagePdfLayoutPanel
-            placement="inline"
-            enabled={imageLayoutEnabled}
-            onEnabledChange={setImageLayoutEnabled}
-            layout={layout}
-            onLayoutChange={setLayout}
-            disabled={loading}
-          />
-
-          <div className="mobile-sticky-cta">
+  const rightSidebar =
+    items.length > 0 ? (
+      <div className="flex flex-col gap-4">
+        {!result && (
+          <>
+            <ImagePdfLayoutPanel
+              enabled={imageLayoutEnabled}
+              onEnabledChange={setImageLayoutEnabled}
+              layout={layout}
+              onLayoutChange={setLayout}
+              disabled={loading}
+            />
             <PrimaryActionButton
               onClick={() => handleConvert()}
               disabled={loading || items.length === 0}
@@ -185,24 +137,10 @@ export function ImageToPdfClient() {
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               {loading ? "Processing…" : "Convert to PDF"}
             </PrimaryActionButton>
-          </div>
-        </div>
-      )}
+          </>
+        )}
 
-      {result && (
-        <div className="space-y-4">
-          {processingInfo && (
-            <ProcessingBadge
-              mode={processingInfo.mode}
-              reason={processingInfo.reason}
-            />
-          )}
-          <p className="text-sm text-muted-foreground">
-            Your PDF is ready:{" "}
-            <span className="font-mono tabular-nums text-foreground">
-              {formatBytes(result.size)}
-            </span>
-          </p>
+        {result && (
           <ToolResultFooter
             blob={result}
             downloadFilename={OUTPUT_FILENAMES.imageToPdf}
@@ -211,7 +149,125 @@ export function ImageToPdfClient() {
             emailInputId="image-to-pdf-email"
             toolLabel="converted PDF"
           />
-        </div>
+        )}
+      </div>
+    ) : undefined;
+
+  return (
+    <ToolShell
+      icon={Images}
+      title="Image to PDF"
+      description="Upload images in the order you want them. Each image becomes one page."
+      rightSidebar={rightSidebar}
+    >
+      {items.length === 0 ? (
+        <ToolLanding>
+          <Link
+            href={TOOL_ROUTES.convert}
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground md:hidden"
+          >
+            <ChevronLeft className="size-3" />
+            Convert options
+          </Link>
+          <FileDropzone
+            onDrop={handleDrop}
+            accept={IMAGE_TO_PDF_ACCEPT}
+            multiple
+            maxSize={LOCAL_SIZE_WARN_BYTES}
+            label="Drop images here, or click to browse."
+            hint="Take a photo or choose from library · JPEG, PNG, WebP, HEIC"
+            capture="environment"
+            showCameraButton
+            disabled={loading}
+          />
+        </ToolLanding>
+      ) : (
+        <ToolWorkspace>
+          {!result ? (
+            <div className="space-y-4">
+              <FileDropzone
+                onDrop={handleDrop}
+                accept={IMAGE_TO_PDF_ACCEPT}
+                multiple
+                maxSize={LOCAL_SIZE_WARN_BYTES}
+                compact
+                label="Add more images"
+                hint="Take a photo or choose from library"
+                capture="environment"
+                showCameraButton
+                disabled={loading}
+              />
+
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">
+                  {items.length} image{items.length !== 1 ? "s" : ""}
+                  <span className="ml-2 font-normal font-mono tabular-nums text-muted-foreground">
+                    ({formatBytes(totalSize)})
+                  </span>
+                </p>
+                <DestructiveActionButton type="button" onClick={handleReset}>
+                  Clear all
+                </DestructiveActionButton>
+              </div>
+
+              <HybridProcessingFeedback
+                operation="image-to-pdf"
+                files={files}
+                showWarn={showWarn}
+                processingInfo={badgeInfo}
+                fallback={fallback}
+                active={loading}
+                onRetryServer={() => handleConvert("server")}
+                onRetryLocal={() => handleConvert("local")}
+                progressKey={String(loading)}
+              />
+              <FileList items={items} onReorder={setItems} />
+
+              <div className="mobile-sticky-cta space-y-4 lg:hidden">
+                <ImagePdfLayoutPanel
+                  enabled={imageLayoutEnabled}
+                  onEnabledChange={setImageLayoutEnabled}
+                  layout={layout}
+                  onLayoutChange={setLayout}
+                  disabled={loading}
+                />
+                <PrimaryActionButton
+                  onClick={() => handleConvert()}
+                  disabled={loading || items.length === 0}
+                  className="w-full"
+                >
+                  {loading && <Loader2 className="size-4 animate-spin" />}
+                  {loading ? "Processing…" : "Convert to PDF"}
+                </PrimaryActionButton>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {processingInfo && (
+                <ProcessingBadge
+                  mode={processingInfo.mode}
+                  reason={processingInfo.reason}
+                />
+              )}
+              <p className="text-sm text-muted-foreground">
+                Your PDF is ready:{" "}
+                <span className="font-mono tabular-nums text-foreground">
+                  {formatBytes(result.size)}
+                </span>
+              </p>
+              <div className="lg:hidden">
+                <ToolResultFooter
+                  blob={result}
+                  downloadFilename={OUTPUT_FILENAMES.imageToPdf}
+                  secondaryLabel="Convert more images"
+                  onSecondary={handleReset}
+                  emailInputId="image-to-pdf-email"
+                  toolLabel="converted PDF"
+                />
+              </div>
+            </div>
+          )}
+        </ToolWorkspace>
       )}
     </ToolShell>
   );

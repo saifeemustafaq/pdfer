@@ -47,6 +47,7 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     isActive={isToolNavActive(pathname, href)}
                     render={<Link href={href} />}
+                    className="data-active:bg-primary data-active:font-medium data-active:text-primary-foreground data-active:hover:bg-primary data-active:hover:text-primary-foreground data-active:[&_svg]:text-primary-foreground"
                   >
                     <Icon />
                     <span>{label}</span>

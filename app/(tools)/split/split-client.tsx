@@ -193,7 +193,7 @@ export function SplitClient() {
   const rightSidebar =
     pdfBlob && !preflightError ? (
       <div className="flex flex-col gap-4">
-        {sidebarOptions}
+        <div className="hidden lg:block">{sidebarOptions}</div>
         <PrimaryActionButton
           onClick={handleSplit}
           disabled={!canSplit}
@@ -302,32 +302,9 @@ export function SplitClient() {
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Configure the split method in the sidebar, then download.
+                    Configure the split method above, then download below.
                   </p>
                 )}
-
-                <div className="mobile-sticky-cta space-y-4 lg:hidden">
-                  <PrimaryActionButton
-                    onClick={handleSplit}
-                    disabled={!canSplit}
-                    className="w-full"
-                  >
-                    {processing && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {processing ? "Processing…" : splitLabel}
-                  </PrimaryActionButton>
-
-                  {resultBlob && (
-                    <ToolResultFooter
-                      blob={resultBlob}
-                      getBlob={buildResultBlob}
-                      downloadFilename={resultFilename}
-                      secondaryLabel="Split another PDF"
-                      onSecondary={handleClear}
-                      emailInputId="split-email-mobile"
-                      toolLabel="Split PDF"
-                    />
-                  )}
-                </div>
               </>
             )}
           </div>

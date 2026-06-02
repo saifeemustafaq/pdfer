@@ -358,20 +358,21 @@ export function MergeClient() {
           ? "…"
           : "…";
 
-  const rightSidebar = (
-    <div className="flex flex-col gap-3">
-      {showLayoutPanel && (
-        <ImagePdfLayoutPanel
-          enabled={imageLayoutEnabled}
-          onEnabledChange={setImageLayoutEnabled}
-          layout={imageLayout}
-          onLayoutChange={setImageLayout}
-          disabled={busy}
-          unevenDimensionsDetected={promptUnevenLayout}
-          helperText="Applies to image files only. PDF pages keep their original size."
-        />
-      )}
+  const layoutPanel =
+    showLayoutPanel ? (
+      <ImagePdfLayoutPanel
+        enabled={imageLayoutEnabled}
+        onEnabledChange={setImageLayoutEnabled}
+        layout={imageLayout}
+        onLayoutChange={setImageLayout}
+        disabled={busy}
+        unevenDimensionsDetected={promptUnevenLayout}
+        helperText="Applies to image files only. PDF pages keep their original size."
+      />
+    ) : null;
 
+  const downloadPanel = (
+    <>
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
         {!mergedBlob && (
           <p className="text-xs text-muted-foreground">Building preview…</p>
@@ -468,8 +469,16 @@ export function MergeClient() {
           disabled={busy || !mergedBlob}
         />
       </div>
-    </div>
+    </>
   );
+
+  const rightSidebar =
+    items.length > 0 ? (
+      <div className="flex flex-col gap-3">
+        {layoutPanel ? <div className="hidden lg:block">{layoutPanel}</div> : null}
+        {downloadPanel}
+      </div>
+    ) : undefined;
 
   return (
     <ToolShell
@@ -477,7 +486,6 @@ export function MergeClient() {
       title="Merge PDFs"
       description="Drop files, reorder them or individual pages, then download or compress."
       rightSidebar={items.length > 0 ? rightSidebar : undefined}
-      mobileActions={mergedBlob ? rightSidebar : undefined}
     >
       {items.length === 0 ? (
         <ToolLanding>
@@ -493,7 +501,7 @@ export function MergeClient() {
         </ToolLanding>
       ) : (
         <ToolWorkspace wide>
-        <div className={cn("space-y-6 min-w-0", mergedBlob && "max-lg:pb-96")}>
+        <div className="space-y-6 min-w-0">
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium">
@@ -538,25 +546,14 @@ export function MergeClient() {
                 />
                 <FileList items={items} onReorder={setItems} />
               </div>
-
-              {showLayoutPanel && (
-                <div className="lg:hidden">
-                  <ImagePdfLayoutPanel
-                    enabled={imageLayoutEnabled}
-                    onEnabledChange={setImageLayoutEnabled}
-                    layout={imageLayout}
-                    onLayoutChange={setImageLayout}
-                    disabled={busy}
-                    unevenDimensionsDetected={promptUnevenLayout}
-                    helperText="Applies to image files only. PDF pages keep their original size."
-                  />
-                </div>
-              )}
-
             </div>
 
             {mergedBlob ? (
               <div className="space-y-4 pt-2 border-t border-border">
+                {layoutPanel ? (
+                  <div className="lg:hidden">{layoutPanel}</div>
+                ) : null}
+
                 <div>
                   <p className="text-sm font-medium">Page preview</p>
                   <p className="text-xs text-muted-foreground mt-0.5">

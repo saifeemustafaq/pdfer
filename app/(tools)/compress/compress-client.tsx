@@ -204,17 +204,6 @@ export function CompressClient() {
                   onRetryLocal={() => handleCompress("local")}
                   progressKey={String(loading)}
                 />
-                <div className="mobile-sticky-cta lg:hidden">
-                  <QualitySlider value={quality} onChange={setQuality} />
-                  <PrimaryActionButton
-                    onClick={() => handleCompress()}
-                    disabled={loading}
-                    className="mt-4 w-full"
-                  >
-                    {loading && <Loader2 className="size-4 animate-spin" />}
-                    {loading ? "Processing…" : "Compress PDF"}
-                  </PrimaryActionButton>
-                </div>
               </>
             )}
 
@@ -264,17 +253,6 @@ export function CompressClient() {
                 </div>
 
                 <ProcessingProgress active={false} success={done} />
-
-                <div className="lg:hidden">
-                  <ToolResultFooter
-                    blob={result.blob}
-                    downloadFilename={result.filename}
-                    secondaryLabel="Compress another"
-                    onSecondary={handleClear}
-                    emailInputId="compress-email"
-                    toolLabel="compressed PDF"
-                  />
-                </div>
               </>
             )}
           </div>

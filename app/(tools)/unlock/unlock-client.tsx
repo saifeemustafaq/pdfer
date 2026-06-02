@@ -191,10 +191,6 @@ export function UnlockClient() {
               mode={SERVER_PROCESSING.mode}
               reason={SERVER_PROCESSING.reason}
             />
-
-            <div className="space-y-4 lg:hidden">
-              {rightSidebar}
-            </div>
           </div>
         </ToolWorkspace>
       )}

@@ -16,6 +16,7 @@ Baseline rules for structure, reuse, and conventions. Follow these unless there'
 | Theming | `next-themes` (light/dark) | — |
 | Font (sans) | Inter (via `next/font/google`) | — |
 | PDF operations | `pdf-lib` | — |
+| PDF decryption (unlock) | `mupdf` (WASM) | — |
 | Image normalisation | `sharp` (server) / canvas (browser worker) | — |
 | Local processing | Web Workers (`public/workers/*.mjs`) | — |
 | File upload UX | `react-dropzone` | — |
@@ -33,6 +34,7 @@ All server-side PDF operations (merge, compress, image-to-PDF) are handled in No
 - **sharp** (server only) normalises images before embedding (format conversion, EXIF stripping, quality downsampling).
 - **Web Workers + canvas** (browser only) run merge, compress, and image-to-PDF locally when the router selects the device path.
 - **pdfjs-dist** (browser only) rasterises PDF pages for export to JPEG/PNG ZIP.
+- **mupdf** (server only, WASM) decrypts password-protected PDFs for the unlock tool. pdf-lib cannot verify passwords or decrypt content streams; MuPDF authenticates the user/owner password and rewrites the file with encryption removed. It is pure WASM (no native binary, no external service), so it stays within the Netlify-native, no-Python constraint below. The WASM binary is shipped to the function via `included_files` in `netlify.toml`.
 - **No Python microservice.** A separate Python backend (e.g. Render + PyMuPDF) would mean separate deploys, CORS config, cold starts, and no Netlify-native hosting. The JS approach achieves 60–80% size reduction on scan-heavy PDFs — the primary use case — without the operational overhead. If print-quality ghostscript-level compression becomes necessary, a Python microservice can be added in a future sprint without touching the frontend.
 
 ---
@@ -54,7 +56,7 @@ pdfer/
 │   │   ├── edit-pdf/                   # Reorder/remove/rotate + watermark + sign/fill (browser)
 │   │   ├── image-to-pdf/               # Images → multi-page PDF (hybrid)
 │   │   ├── pdf-to-image/               # PDF pages → ZIP of images (browser)
-│   │   └── unlock/                     # Remove PDF password (server pdf-lib rewrite)
+│   │   └── unlock/                     # Remove PDF password (server MuPDF decrypt)
 │   ├── api/
 │   │   ├── merge/route.ts              # POST multipart: PDFs + images → merged PDF
 │   │   ├── compress/route.ts           # POST multipart: PDF + quality → compressed PDF
@@ -145,7 +147,7 @@ pdfer/
 │   ├── services/
 │   │   ├── pdf-merger.ts               # Server: merge PDFs/images (pdf-lib + sharp)
 │   │   ├── pdf-compressor.ts           # Server: re-encode embedded images (pdf-lib + sharp)
-│   │   ├── pdf-unlocker.ts             # Server: rewrite PDF without encryption (pdf-lib)
+│   │   ├── pdf-unlocker.ts             # Server: decrypt password-protected PDF (mupdf WASM)
 │   │   ├── image-to-pdf.ts             # Server: images → PDF pages (pdf-lib + sharp)
 │   │   └── email-delivery.ts           # Server: Nodemailer send for /api/send-result
 │   └── utils.ts                        # cn() helper

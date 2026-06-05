@@ -408,32 +408,6 @@ export function EditPdfClient() {
                   />
                 )}
 
-                {activeTab !== "pages" && (
-                  <div className="lg:hidden">{tabPanel}</div>
-                )}
-
-                <div className="mobile-sticky-cta space-y-4 lg:hidden">
-                  <PrimaryActionButton
-                    onClick={handleDownload}
-                    disabled={!canDownload}
-                    className="w-full"
-                  >
-                    {exporting && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {exporting ? "Processing…" : "Download edited PDF"}
-                  </PrimaryActionButton>
-
-                  {resultBlob && (
-                    <ToolResultFooter
-                      blob={resultBlob}
-                      getBlob={buildEditedBlob}
-                      downloadFilename={OUTPUT_FILENAMES.editPdf}
-                      secondaryLabel="Edit another PDF"
-                      onSecondary={handleClear}
-                      emailInputId="edit-pdf-email-mobile"
-                      toolLabel="Edit PDF"
-                    />
-                  )}
-                </div>
               </>
             )}
           </div>

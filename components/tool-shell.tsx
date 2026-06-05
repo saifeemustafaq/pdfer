@@ -10,10 +10,8 @@ type ToolShellProps = {
   title: string;
   description: string;
   children: React.ReactNode;
-  /** Settings, downloads, and actions — desktop right sidebar only */
+  /** Settings, downloads, and actions — desktop right sidebar; appended in scroll on mobile */
   rightSidebar?: React.ReactNode;
-  /** Mobile bottom panel (e.g. merge export) — shown above tab bar */
-  mobileActions?: React.ReactNode;
   className?: string;
 };
 
@@ -23,7 +21,6 @@ export function ToolShell({
   description,
   children,
   rightSidebar,
-  mobileActions,
   className,
 }: ToolShellProps) {
   return (
@@ -49,16 +46,19 @@ export function ToolShell({
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <div
-          className={cn(
-            "min-w-0 flex-1 overflow-y-auto px-4 md:px-6 lg:px-8 py-6",
-            mobileActions && "max-lg:pb-4"
-          )}
-        >
+        <div className="min-w-0 flex-1 overflow-y-auto px-4 md:px-6 lg:px-8 py-6">
           {children}
+          {rightSidebar ? (
+            <aside
+              aria-label="Tool actions"
+              className="mt-8 space-y-4 border-t border-border pt-6 lg:hidden"
+            >
+              {rightSidebar}
+            </aside>
+          ) : null}
         </div>
 
-        {rightSidebar && (
+        {rightSidebar ? (
           <Sidebar
             side="right"
             collapsible="none"
@@ -68,22 +68,8 @@ export function ToolShell({
               {rightSidebar}
             </SidebarContent>
           </Sidebar>
-        )}
+        ) : null}
       </div>
-
-      {mobileActions && (
-        <aside
-          aria-label="Tool actions"
-          className={cn(
-            "lg:hidden fixed inset-x-0 z-40 bottom-mobile-nav",
-            "border-t border-border bg-background/95 backdrop-blur-sm",
-            "px-4 py-3 shadow-[0_-4px_20px_oklch(0_0_0/0.06)]",
-            "max-h-[min(70dvh,520px)] overflow-y-auto"
-          )}
-        >
-          {mobileActions}
-        </aside>
-      )}
     </div>
   );
 }

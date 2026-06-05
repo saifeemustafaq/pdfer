@@ -200,31 +200,42 @@
   .bottom-mobile-nav {
     bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
   }
-  .mobile-sticky-cta {
-    position: sticky;
-    z-index: 30;
-    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+
+  /* Horizontal mobile tab bar — edge fades + peek clip */
+  .mobile-tab-bar-scroll {
+    padding-right: 0;
+    scroll-padding-inline: 0.5rem;
   }
-  @media (max-width: 767px) {
-    .mobile-sticky-cta {
-      margin-inline: -1rem;
-      padding: 0.75rem 1rem;
-      background: color-mix(in oklch, var(--background) 95%, transparent);
-      backdrop-filter: blur(8px);
-    }
+  .mobile-tab-bar-edge-fade {
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
+    width: 1.75rem;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 150ms ease;
   }
-  @media (min-width: 768px) {
-    .mobile-sticky-cta {
-      position: static;
-      bottom: auto;
-      margin-inline: 0;
-      padding: 0;
-      background: transparent;
-      backdrop-filter: none;
-    }
+  .mobile-tab-bar-edge-fade.is-visible {
+    opacity: 1;
+  }
+  .mobile-tab-bar-edge-fade--left {
+    left: 0;
+    background: linear-gradient(
+      to right,
+      color-mix(in oklch, var(--background) 96%, transparent) 0%,
+      transparent 100%
+    );
+  }
+  .mobile-tab-bar-edge-fade--right {
+    right: 0;
+    background: linear-gradient(
+      to left,
+      color-mix(in oklch, var(--background) 96%, transparent) 0%,
+      transparent 100%
+    );
   }
 
-  /* PDF page preview frames (edit tools) — dimensions via CSS variable bridging */
   .pdf-preview-frame {
     width: calc(var(--pdf-preview-w, 0) * 1px);
     height: calc(var(--pdf-preview-h, 0) * 1px);

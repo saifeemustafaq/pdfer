@@ -74,18 +74,20 @@ export function PdfToImageClient() {
 
   const rightSidebar = file ? (
     <div className="flex flex-col gap-4">
-      {!result && (
-        <>
+      <div className="hidden lg:block">
+        {!result && (
           <ImageFormatPicker value={format} onChange={setFormat} />
-          <PrimaryActionButton
-            onClick={handleConvert}
-            disabled={loading}
-            className="w-full"
-          >
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? "Processing…" : "Export to ZIP"}
-          </PrimaryActionButton>
-        </>
+        )}
+      </div>
+      {!result && (
+        <PrimaryActionButton
+          onClick={handleConvert}
+          disabled={loading}
+          className="w-full"
+        >
+          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+          {loading ? "Processing…" : "Export to ZIP"}
+        </PrimaryActionButton>
       )}
 
       {result && (
@@ -159,17 +161,7 @@ export function PdfToImageClient() {
                   </p>
                 )}
                 <ProcessingProgress key={String(loading)} active={loading} />
-                <div className="mobile-sticky-cta space-y-4 lg:hidden">
-                  <ImageFormatPicker value={format} onChange={setFormat} />
-                  <PrimaryActionButton
-                    onClick={handleConvert}
-                    disabled={loading}
-                    className="w-full"
-                  >
-                    {loading && <Loader2 className="size-4 animate-spin" />}
-                    {loading ? "Processing…" : "Export to ZIP"}
-                  </PrimaryActionButton>
-                </div>
+                <ImageFormatPicker value={format} onChange={setFormat} />
               </>
             )}
 
@@ -182,17 +174,6 @@ export function PdfToImageClient() {
                     {formatBytes(result.size)}
                   </span>
                 </p>
-                <div className="lg:hidden">
-                  <ToolResultFooter
-                    blob={result}
-                    downloadFilename={OUTPUT_FILENAMES.pdfToImageZip}
-                    downloadLabel="Download ZIP"
-                    secondaryLabel="Convert another PDF"
-                    onSecondary={handleClear}
-                    emailInputId="pdf-to-image-email"
-                    toolLabel="PDF export ZIP"
-                  />
-                </div>
               </>
             )}
           </div>

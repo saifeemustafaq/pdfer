@@ -120,24 +120,24 @@ export function ImageToPdfClient() {
   const rightSidebar =
     items.length > 0 ? (
       <div className="flex flex-col gap-4">
+        <div className="hidden lg:block">
+          <ImagePdfLayoutPanel
+            enabled={imageLayoutEnabled}
+            onEnabledChange={setImageLayoutEnabled}
+            layout={layout}
+            onLayoutChange={setLayout}
+            disabled={loading}
+          />
+        </div>
         {!result && (
-          <>
-            <ImagePdfLayoutPanel
-              enabled={imageLayoutEnabled}
-              onEnabledChange={setImageLayoutEnabled}
-              layout={layout}
-              onLayoutChange={setLayout}
-              disabled={loading}
-            />
-            <PrimaryActionButton
-              onClick={() => handleConvert()}
-              disabled={loading || items.length === 0}
-              className="w-full"
-            >
-              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {loading ? "Processing…" : "Convert to PDF"}
-            </PrimaryActionButton>
-          </>
+          <PrimaryActionButton
+            onClick={() => handleConvert()}
+            disabled={loading || items.length === 0}
+            className="w-full"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {loading ? "Processing…" : "Convert to PDF"}
+          </PrimaryActionButton>
         )}
 
         {result && (
@@ -223,23 +223,13 @@ export function ImageToPdfClient() {
               />
               <FileList items={items} onReorder={setItems} />
 
-              <div className="mobile-sticky-cta space-y-4 lg:hidden">
-                <ImagePdfLayoutPanel
-                  enabled={imageLayoutEnabled}
-                  onEnabledChange={setImageLayoutEnabled}
-                  layout={layout}
-                  onLayoutChange={setLayout}
-                  disabled={loading}
-                />
-                <PrimaryActionButton
-                  onClick={() => handleConvert()}
-                  disabled={loading || items.length === 0}
-                  className="w-full"
-                >
-                  {loading && <Loader2 className="size-4 animate-spin" />}
-                  {loading ? "Processing…" : "Convert to PDF"}
-                </PrimaryActionButton>
-              </div>
+              <ImagePdfLayoutPanel
+                enabled={imageLayoutEnabled}
+                onEnabledChange={setImageLayoutEnabled}
+                layout={layout}
+                onLayoutChange={setLayout}
+                disabled={loading}
+              />
             </div>
           ) : (
             <div className="space-y-4">
@@ -255,16 +245,6 @@ export function ImageToPdfClient() {
                   {formatBytes(result.size)}
                 </span>
               </p>
-              <div className="lg:hidden">
-                <ToolResultFooter
-                  blob={result}
-                  downloadFilename={OUTPUT_FILENAMES.imageToPdf}
-                  secondaryLabel="Convert more images"
-                  onSecondary={handleReset}
-                  emailInputId="image-to-pdf-email"
-                  toolLabel="converted PDF"
-                />
-              </div>
             </div>
           )}
         </ToolWorkspace>

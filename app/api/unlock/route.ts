@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { unlockPdf } from "@/lib/services/pdf-unlocker";
+import { unlockPdf, UnlockError } from "@/lib/services/pdf-unlocker";
 import { OUTPUT_FILENAMES } from "@/lib/constants";
 import { getUploadSizeError, isPdfBuffer } from "@/lib/file-utils";
+
+// MuPDF runs as WASM and needs the Node runtime (not edge).
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,10 +51,25 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err) {
+    if (err instanceof UnlockError) {
+      // PASSWORD_REQUIRED / INCORRECT_PASSWORD are user-correctable (400);
+      // INVALID_PDF is a bad input (422); SERVICE_ERROR is upstream (502).
+      const status =
+        err.code === "PASSWORD_REQUIRED" || err.code === "INCORRECT_PASSWORD"
+          ? 400
+          : err.code === "INVALID_PDF"
+            ? 422
+            : 502;
+      return NextResponse.json(
+        { error: err.message, code: err.code },
+        { status }
+      );
+    }
+
     console.error("POST /api/unlock failed:", err);
-    const msg =
-      err instanceof Error ? err.message : "Could not unlock this PDF.";
-    const status = /password|encrypt|ownership/i.test(msg) ? 400 : 500;
-    return NextResponse.json({ error: msg }, { status });
+    return NextResponse.json(
+      { error: "Could not unlock this PDF." },
+      { status: 500 }
+    );
   }
 }

@@ -16,6 +16,8 @@ import { ProcessingProgress } from "@/components/processing-progress";
 import { ProcessingBadge } from "@/components/processing-badge";
 import { HybridProcessingFeedback } from "@/components/hybrid-processing-feedback";
 import { ToolResultFooter } from "@/components/tool-result-footer";
+import { MobileDownloadFab } from "@/components/mobile-download-fab";
+import { MobileOutputDrawer } from "@/components/mobile-output-drawer";
 import {
   LOCAL_SIZE_WARN_BYTES,
   MIN_MEANINGFUL_SAVINGS_PERCENT,
@@ -53,6 +55,7 @@ export function CompressClient() {
   const [fallback, setFallback] = useState<ProcessingFallbackVariant | null>(
     null
   );
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const files = useMemo(() => (file ? [file] : []), [file]);
   const showWarn = file ? file.size > UPLOAD_WARN_BYTES : false;
@@ -151,6 +154,7 @@ export function CompressClient() {
   ) : undefined;
 
   return (
+    <>
     <ToolShell
       icon={Minimize2}
       title="Compress PDF"
@@ -259,5 +263,18 @@ export function CompressClient() {
         </ToolWorkspace>
       )}
     </ToolShell>
+
+    <MobileDownloadFab
+      blob={result?.blob ?? null}
+      onClick={() => setDrawerOpen(true)}
+    />
+    <MobileOutputDrawer
+      open={drawerOpen}
+      onOpenChange={setDrawerOpen}
+      blob={result?.blob ?? null}
+      filename={result?.filename ?? ""}
+      toolLabel="compressed PDF"
+    />
+    </>
   );
 }

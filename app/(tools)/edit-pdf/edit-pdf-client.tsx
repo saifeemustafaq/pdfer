@@ -13,6 +13,8 @@ import { ToolLanding, ToolWorkspace } from "@/components/tool-landing";
 import { FileDropzone } from "@/components/file-dropzone";
 import { ProcessingBadge } from "@/components/processing-badge";
 import { ToolResultFooter } from "@/components/tool-result-footer";
+import { MobileDownloadFab } from "@/components/mobile-download-fab";
+import { MobileOutputDrawer } from "@/components/mobile-output-drawer";
 import { EncryptedPdfNotice } from "@/components/encrypted-pdf-notice";
 import { EditPdfTabBar, type EditPdfTab } from "@/components/edit-pdf-tab-bar";
 import { PdfWatermarkPanel } from "@/components/pdf-watermark-panel";
@@ -33,6 +35,7 @@ import {
   type WatermarkSpec,
 } from "@/lib/pdf-watermark";
 import { preflightPdf } from "@/lib/processing/preflight";
+import { processCompress } from "@/lib/processing/orchestrator";
 import { triggerBlobDownload } from "@/lib/download-client";
 import { LOCAL_SIZE_WARN_BYTES, OUTPUT_FILENAMES } from "@/lib/constants";
 import { formatBytes } from "@/lib/file-utils";
@@ -88,6 +91,7 @@ export function EditPdfClient() {
   const [signatureSpec, setSignatureSpec] =
     useState<SignatureSpec>(DEFAULT_SIGNATURE_SPEC);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleDrop = useCallback(async (files: File[]) => {
     const pdf = files[0];
@@ -205,6 +209,16 @@ export function EditPdfClient() {
     });
   }
 
+  async function buildCompressedEditedBlob(): Promise<Blob | null> {
+    const blob = await buildEditedBlob();
+    if (!blob) return null;
+    const source = new File([blob], OUTPUT_FILENAMES.editPdf, {
+      type: "application/pdf",
+    });
+    const output = await processCompress(source, "medium");
+    return output.blob;
+  }
+
   async function handleDownload() {
     setExporting(true);
     try {
@@ -302,6 +316,7 @@ export function EditPdfClient() {
     ) : undefined;
 
   return (
+    <>
     <ToolShell
       icon={LayoutGrid}
       title="Edit PDF"
@@ -414,5 +429,18 @@ export function EditPdfClient() {
         </ToolWorkspace>
       )}
     </ToolShell>
+
+    <MobileDownloadFab blob={resultBlob} onClick={() => setDrawerOpen(true)} />
+    <MobileOutputDrawer
+      open={drawerOpen}
+      onOpenChange={setDrawerOpen}
+      blob={resultBlob}
+      getBlob={buildEditedBlob}
+      filename={OUTPUT_FILENAMES.editPdf}
+      toolLabel="Edit PDF"
+      supportsCompression
+      getCompressedBlob={buildCompressedEditedBlob}
+    />
+    </>
   );
 }

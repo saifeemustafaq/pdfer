@@ -13,6 +13,8 @@ import { ToolLanding, ToolWorkspace } from "@/components/tool-landing";
 import { FileDropzone } from "@/components/file-dropzone";
 import { ProcessingBadge } from "@/components/processing-badge";
 import { ToolResultFooter } from "@/components/tool-result-footer";
+import { MobileDownloadFab } from "@/components/mobile-download-fab";
+import { MobileOutputDrawer } from "@/components/mobile-output-drawer";
 import { EncryptedPdfNotice } from "@/components/encrypted-pdf-notice";
 import {
   SplitOptionsPanel,
@@ -62,6 +64,7 @@ export function SplitClient() {
   const [resultFilename, setResultFilename] = useState<string>(
     OUTPUT_FILENAMES.split
   );
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleDrop = useCallback(async (files: File[]) => {
     const pdf = files[0];
@@ -218,6 +221,7 @@ export function SplitClient() {
     ) : undefined;
 
   return (
+    <>
     <ToolShell
       icon={Scissors}
       title="Split PDF"
@@ -311,5 +315,19 @@ export function SplitClient() {
         </ToolWorkspace>
       )}
     </ToolShell>
+
+    <MobileDownloadFab
+      blob={resultBlob}
+      onClick={() => setDrawerOpen(true)}
+    />
+    <MobileOutputDrawer
+      open={drawerOpen}
+      onOpenChange={setDrawerOpen}
+      blob={resultBlob}
+      getBlob={buildResultBlob}
+      filename={resultFilename}
+      toolLabel="Split PDF"
+    />
+    </>
   );
 }

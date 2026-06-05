@@ -19,6 +19,8 @@ import {
   resolveImageLayoutForProcessing,
 } from "@/components/image-pdf-layout-panel";
 import { ToolResultFooter } from "@/components/tool-result-footer";
+import { MobileDownloadFab } from "@/components/mobile-download-fab";
+import { MobileOutputDrawer } from "@/components/mobile-output-drawer";
 import {
   MERGE_IMAGE_LAYOUT_DEFAULT,
   type ImagePdfLayoutOptions as ImagePdfLayout,
@@ -37,7 +39,10 @@ import {
   getProcessingErrorMessage,
   type ProcessingFallbackVariant,
 } from "@/lib/processing/errors";
-import { processImageToPdf } from "@/lib/processing/orchestrator";
+import {
+  processImageToPdf,
+  processCompress,
+} from "@/lib/processing/orchestrator";
 import { useRoutingBadge } from "@/lib/processing/use-routing-badge";
 import type { ProcessingInfo, ProcessingMode } from "@/lib/processing/types";
 import type { StagedFileItem } from "@/types";
@@ -54,11 +59,21 @@ export function ImageToPdfClient() {
   );
   const [imageLayoutEnabled, setImageLayoutEnabled] = useState(false);
   const [layout, setLayout] = useState<ImagePdfLayout>(MERGE_IMAGE_LAYOUT_DEFAULT);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const effectiveLayout = useMemo(
     () => resolveImageLayoutForProcessing(imageLayoutEnabled, layout),
     [imageLayoutEnabled, layout]
   );
+
+  const getCompressedBlob = useCallback(async (): Promise<Blob | null> => {
+    if (!result) return null;
+    const source = new File([result], OUTPUT_FILENAMES.imageToPdf, {
+      type: "application/pdf",
+    });
+    const output = await processCompress(source, "medium");
+    return output.blob;
+  }, [result]);
 
   const files = useMemo(() => items.map((item) => item.file), [items]);
   const totalSize = items.reduce((s, i) => s + i.file.size, 0);
@@ -154,6 +169,7 @@ export function ImageToPdfClient() {
     ) : undefined;
 
   return (
+    <>
     <ToolShell
       icon={Images}
       title="Image to PDF"
@@ -250,5 +266,17 @@ export function ImageToPdfClient() {
         </ToolWorkspace>
       )}
     </ToolShell>
+
+    <MobileDownloadFab blob={result} onClick={() => setDrawerOpen(true)} />
+    <MobileOutputDrawer
+      open={drawerOpen}
+      onOpenChange={setDrawerOpen}
+      blob={result}
+      filename={OUTPUT_FILENAMES.imageToPdf}
+      toolLabel="converted PDF"
+      supportsCompression
+      getCompressedBlob={getCompressedBlob}
+    />
+    </>
   );
 }

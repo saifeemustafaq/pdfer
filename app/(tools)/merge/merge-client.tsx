@@ -26,6 +26,8 @@ import {
   resolveImageLayoutForProcessing,
 } from "@/components/image-pdf-layout-panel";
 import { EmailDeliveryForm } from "@/components/email-delivery-form";
+import { MobileDownloadFab } from "@/components/mobile-download-fab";
+import { MobileOutputDrawer } from "@/components/mobile-output-drawer";
 import {
   DEFAULT_IMAGE_PDF_LAYOUT,
   MERGE_IMAGE_LAYOUT_DEFAULT,
@@ -96,6 +98,7 @@ export function MergeClient() {
   const [exportBlob, setExportBlob] = useState<Blob | null>(null);
   const [computingExportSize, setComputingExportSize] = useState(false);
   const [quality, setQuality] = useState<QualityPreset>("medium");
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [imageLayoutEnabled, setImageLayoutEnabled] = useState(false);
   const [imageLayout, setImageLayout] = useState<ImagePdfLayout>(
     MERGE_IMAGE_LAYOUT_DEFAULT
@@ -311,6 +314,16 @@ export function MergeClient() {
     return exportEditedPdf(mergedBlob, pageEditSpec);
   }
 
+  async function getCompressedExportBlob(): Promise<Blob | null> {
+    const blob = await buildExportBlob();
+    if (!blob) return null;
+    const sourceFile = new File([blob], OUTPUT_FILENAMES.merge, {
+      type: "application/pdf",
+    });
+    const output = await processCompress(sourceFile, quality);
+    return output.blob;
+  }
+
   async function handleDownload() {
     setExporting(true);
     try {
@@ -481,6 +494,7 @@ export function MergeClient() {
     ) : undefined;
 
   return (
+    <>
     <ToolShell
       icon={Combine}
       title="Merge PDFs"
@@ -591,5 +605,18 @@ export function MergeClient() {
         </ToolWorkspace>
       )}
     </ToolShell>
+
+    <MobileDownloadFab blob={mergedBlob} onClick={() => setDrawerOpen(true)} />
+    <MobileOutputDrawer
+      open={drawerOpen}
+      onOpenChange={setDrawerOpen}
+      blob={exportBlob}
+      getBlob={buildExportBlob}
+      filename={OUTPUT_FILENAMES.merge}
+      toolLabel="merged PDF"
+      supportsCompression
+      getCompressedBlob={getCompressedExportBlob}
+    />
+    </>
   );
 }

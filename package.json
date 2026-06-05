@@ -2,6 +2,9 @@
   "name": "pdfer",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "npm run build:worker && next dev",
     "build": "npm run build:worker && next build",

@@ -14,6 +14,8 @@ import { FileDropzone } from "@/components/file-dropzone";
 import { ImageFormatPicker } from "@/components/image-format-picker";
 import { ProcessingProgress } from "@/components/processing-progress";
 import { ToolResultFooter } from "@/components/tool-result-footer";
+import { MobileDownloadFab } from "@/components/mobile-download-fab";
+import { MobileOutputDrawer } from "@/components/mobile-output-drawer";
 import {
   LOCAL_SIZE_WARN_BYTES,
   OUTPUT_FILENAMES,
@@ -30,6 +32,7 @@ export function PdfToImageClient() {
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [result, setResult] = useState<Blob | null>(null);
   const [pageCount, setPageCount] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleDrop = useCallback((files: File[]) => {
     const pdf = files[0];
@@ -105,6 +108,7 @@ export function PdfToImageClient() {
   ) : undefined;
 
   return (
+    <>
     <ToolShell
       icon={FileImage}
       title="PDF to image"
@@ -180,5 +184,15 @@ export function PdfToImageClient() {
         </ToolWorkspace>
       )}
     </ToolShell>
+
+    <MobileDownloadFab blob={result} onClick={() => setDrawerOpen(true)} />
+    <MobileOutputDrawer
+      open={drawerOpen}
+      onOpenChange={setDrawerOpen}
+      blob={result}
+      filename={OUTPUT_FILENAMES.pdfToImageZip}
+      toolLabel="PDF export ZIP"
+    />
+    </>
   );
 }

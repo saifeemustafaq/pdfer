@@ -101,6 +101,8 @@ pdfer/
 │   ├── processing-fallback.tsx         # Retry UI after local/server failure
 │   ├── upload-size-notice.tsx          # Size warning + hybrid routing context
 │   ├── size-warning.tsx                # Shared size warning copy
+│   ├── mobile-download-fab.tsx         # Mobile-only floating Download pill (md:hidden)
+│   ├── mobile-output-drawer.tsx        # Mobile-only output sheet: download/email (+ compressed)
 │   └── mobile-tab-bar.tsx              # Mobile bottom tabs (Home + primary tools)
 ├── hooks/
 │   ├── use-mobile.ts                   # Viewport breakpoint helper
@@ -160,6 +162,7 @@ pdfer/
 ├── DEVELOPER_GUIDE.md                  # Structure and API conventions (this file)
 ├── DESIGN_GUIDE.md                     # Visual language and UI patterns
 ├── netlify.toml                        # Netlify build + @netlify/plugin-nextjs
+├── .nvmrc                              # Pins local Node to the Netlify runtime (20)
 └── components.json                     # shadcn configuration
 ```
 
@@ -628,6 +631,10 @@ FormData (files[]) → validate MIMEs + sizes → image-to-pdf.ts
 - **Function size limit** — Netlify Serverless Functions have a 50 MB bundle size limit. `sharp` ships native binaries; verify the Netlify build pipeline resolves the correct Linux binary. If a deploy fails with a missing native module, consult the `sharp` [installation guide for AWS Lambda / Netlify](https://sharp.pixelplumbing.com/install#aws-lambda).
 - **Request payload limit** — Netlify's default request body limit is 6 MB for Serverless Functions. To handle larger PDFs, the function must be configured as a [Netlify Background Function](https://docs.netlify.com/functions/background-functions/) or the `netlify.toml` must raise the body size limit. Document the chosen approach here when implemented.
 - **No persistent storage** — Functions are stateless. Processed files are returned directly in the response. Do not write to the filesystem inside a function.
+
+### Local Node version
+
+Develop on the same Node the deploy uses: **Node 20** (set in `netlify.toml` as `NODE_VERSION` and pinned locally via `.nvmrc` + `package.json` `engines`). Run `nvm use` (or `fnm use`) in the repo root. Newer, non-LTS Node releases surface deprecation warnings from dependencies that target the supported LTS (e.g. `@tailwindcss/node` calling `module.register()` triggers `DEP0205` on Node 26 only). Matching the deploy runtime keeps local output clean and parity with production.
 
 ---
 

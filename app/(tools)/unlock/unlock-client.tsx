@@ -12,12 +12,15 @@ import { ToolLanding, ToolWorkspace } from "@/components/tool-landing";
 import { FileDropzone } from "@/components/file-dropzone";
 import { ProcessingBadge } from "@/components/processing-badge";
 import { ToolResultFooter } from "@/components/tool-result-footer";
+import { MobileDownloadFab } from "@/components/mobile-download-fab";
+import { MobileOutputDrawer } from "@/components/mobile-output-drawer";
 import { Input } from "@/components/ui/input";
 import {
   unlockPdfOnServer,
   isPasswordError,
 } from "@/lib/processing/server/unlock";
 import { triggerBlobDownload } from "@/lib/download-client";
+import { processCompress } from "@/lib/processing/orchestrator";
 import {
   LOCAL_SIZE_WARN_BYTES,
   MAX_SERVER_UPLOAD_BYTES,
@@ -38,6 +41,7 @@ export function UnlockClient() {
   const [processing, setProcessing] = useState(false);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = useCallback((files: File[]) => {
@@ -67,6 +71,16 @@ export function UnlockClient() {
       return null;
     }
     return unlockPdfOnServer(file, password);
+  }
+
+  async function buildCompressedUnlockedBlob(): Promise<Blob | null> {
+    const blob = await buildUnlockedBlob();
+    if (!blob) return null;
+    const source = new File([blob], OUTPUT_FILENAMES.unlock, {
+      type: "application/pdf",
+    });
+    const output = await processCompress(source, "medium");
+    return output.blob;
   }
 
   async function handleUnlock() {
@@ -167,6 +181,7 @@ export function UnlockClient() {
   ) : undefined;
 
   return (
+    <>
     <ToolShell
       icon={LockKeyhole}
       title="Unlock PDF"
@@ -215,5 +230,18 @@ export function UnlockClient() {
         </ToolWorkspace>
       )}
     </ToolShell>
+
+    <MobileDownloadFab blob={resultBlob} onClick={() => setDrawerOpen(true)} />
+    <MobileOutputDrawer
+      open={drawerOpen}
+      onOpenChange={setDrawerOpen}
+      blob={resultBlob}
+      getBlob={buildUnlockedBlob}
+      filename={OUTPUT_FILENAMES.unlock}
+      toolLabel="Unlock PDF"
+      supportsCompression
+      getCompressedBlob={buildCompressedUnlockedBlob}
+    />
+    </>
   );
 }

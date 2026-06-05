@@ -6,9 +6,10 @@
     "node": "20.x"
   },
   "scripts": {
-    "dev": "npm run build:worker && next dev",
-    "build": "npm run build:worker && next build",
+    "dev": "npm run build:icons && npm run build:worker && next dev",
+    "build": "npm run build:icons && npm run build:worker && next build",
     "build:worker": "node scripts/bundle-merge-worker.mjs",
+    "build:icons": "node scripts/generate-icons.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run"

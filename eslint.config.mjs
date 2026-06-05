@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Static assets and generated bundles (service worker, bundled worker).
+    "public/**",
   ]),
 ]);
 

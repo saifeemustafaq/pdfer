@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { LockKeyhole, Loader2, X, FileText } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -13,7 +13,10 @@ import { FileDropzone } from "@/components/file-dropzone";
 import { ProcessingBadge } from "@/components/processing-badge";
 import { ToolResultFooter } from "@/components/tool-result-footer";
 import { Input } from "@/components/ui/input";
-import { unlockPdfOnServer } from "@/lib/processing/server/unlock";
+import {
+  unlockPdfOnServer,
+  isPasswordError,
+} from "@/lib/processing/server/unlock";
 import { triggerBlobDownload } from "@/lib/download-client";
 import {
   LOCAL_SIZE_WARN_BYTES,
@@ -34,10 +37,13 @@ export function UnlockClient() {
   const [attestation, setAttestation] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = useCallback((files: File[]) => {
     setFile(files[0] ?? null);
     setResultBlob(null);
+    setPasswordError(null);
   }, []);
 
   function handleClear() {
@@ -45,6 +51,7 @@ export function UnlockClient() {
     setPassword("");
     setAttestation(false);
     setResultBlob(null);
+    setPasswordError(null);
   }
 
   const overServerLimit = file ? file.size > MAX_SERVER_UPLOAD_BYTES : false;
@@ -64,6 +71,7 @@ export function UnlockClient() {
 
   async function handleUnlock() {
     setProcessing(true);
+    setPasswordError(null);
     try {
       const blob = await buildUnlockedBlob();
       if (!blob) return;
@@ -74,6 +82,10 @@ export function UnlockClient() {
       console.error("unlock failed:", err);
       const message =
         err instanceof Error ? err.message : "Could not unlock this PDF.";
+      if (isPasswordError(err)) {
+        setPasswordError(message);
+        passwordInputRef.current?.focus();
+      }
       toast.error(message);
     } finally {
       setProcessing(false);
@@ -90,12 +102,20 @@ export function UnlockClient() {
           PDF password
         </span>
         <Input
+          ref={passwordInputRef}
           type="password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            if (passwordError) setPasswordError(null);
+          }}
           placeholder="Enter the password"
           autoComplete="current-password"
+          aria-invalid={passwordError ? true : undefined}
         />
+        {passwordError && (
+          <span className="text-xs text-destructive">{passwordError}</span>
+        )}
       </label>
 
       <label className="flex items-start gap-2 text-sm">

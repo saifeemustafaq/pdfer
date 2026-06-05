@@ -20,6 +20,7 @@
     "heic2any": "^0.0.4",
     "jszip": "^3.10.1",
     "lucide-react": "^1.17.0",
+    "mupdf": "^1.27.0",
     "next": "16.2.6",
     "next-themes": "^0.4.6",
     "nodemailer": "^8.0.10",

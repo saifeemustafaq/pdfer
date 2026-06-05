@@ -7,7 +7,13 @@
 
 [functions]
   # Increase function timeout for PDF processing (max 26s on free tier)
-  included_files = ["node_modules/sharp/**", "node_modules/pdf-lib/**"]
+  # mupdf includes a ~10 MB WASM binary loaded at runtime by the unlock route;
+  # it must be shipped into the function bundle explicitly.
+  included_files = [
+    "node_modules/sharp/**",
+    "node_modules/pdf-lib/**",
+    "node_modules/mupdf/**",
+  ]
 
 [build.environment]
   NODE_VERSION = "20"

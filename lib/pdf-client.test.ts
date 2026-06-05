@@ -9,7 +9,7 @@ describe("exportEditedPdf", () => {
     const bytes = await doc.save();
 
     const blob = await exportEditedPdf(
-      new Blob([bytes], { type: "application/pdf" }),
+      new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" }),
       {
         pageIndicesInOrder: [0],
         rotations: { 0: 90 },
@@ -30,7 +30,7 @@ describe("exportEditedPdf", () => {
     const bytes = await doc.save();
 
     const blob = await exportEditedPdf(
-      new Blob([bytes], { type: "application/pdf" }),
+      new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" }),
       { pageIndicesInOrder: [1, 0] }
     );
 

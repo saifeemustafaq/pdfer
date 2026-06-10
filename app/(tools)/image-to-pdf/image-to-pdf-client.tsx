@@ -44,6 +44,7 @@ import {
   processCompress,
 } from "@/lib/processing/orchestrator";
 import { useRoutingBadge } from "@/lib/processing/use-routing-badge";
+import { useImagePaste } from "@/hooks/use-clipboard-paste";
 import type { ProcessingInfo, ProcessingMode } from "@/lib/processing/types";
 import type { StagedFileItem } from "@/types";
 
@@ -92,6 +93,9 @@ export function ImageToPdfClient() {
       toast.info("HEIC converts to JPEG inside the PDF.");
     }
   }, []);
+
+  // Cmd/Ctrl+V anywhere on the page pastes a copied image straight in.
+  useImagePaste(handleDrop, { enabled: !loading });
 
   async function handleConvert(forceMode?: ProcessingMode) {
     if (items.length === 0) return;
@@ -190,10 +194,11 @@ export function ImageToPdfClient() {
             accept={IMAGE_TO_PDF_ACCEPT}
             multiple
             maxSize={LOCAL_SIZE_WARN_BYTES}
-            label="Drop images here, or click to browse."
-            hint="Take a photo or choose from library · JPEG, PNG, WebP, HEIC"
+            label="Drop images here, paste, or click to browse."
+            hint="Paste (⌘V / Ctrl+V), take a photo, or choose from library · JPEG, PNG, WebP, HEIC"
             capture="environment"
             showCameraButton
+            showPasteButton
             disabled={loading}
           />
         </ToolLanding>
@@ -208,9 +213,10 @@ export function ImageToPdfClient() {
                 maxSize={LOCAL_SIZE_WARN_BYTES}
                 compact
                 label="Add more images"
-                hint="Take a photo or choose from library"
+                hint="Paste (⌘V / Ctrl+V), take a photo, or choose from library"
                 capture="environment"
                 showCameraButton
+                showPasteButton
                 disabled={loading}
               />
 

@@ -8,6 +8,7 @@ import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { SecondaryActionButton } from "@/components/app-button";
 import { FilePickerButton } from "@/components/file-picker-button";
+import { PasteImageButton } from "@/components/paste-image-button";
 
 type FileDropzoneProps = {
   onDrop: (files: File[]) => void;
@@ -22,6 +23,8 @@ type FileDropzoneProps = {
   className?: string;
   capture?: boolean | "environment" | "user";
   showCameraButton?: boolean;
+  /** Show a "Paste image" button that reads an image from the clipboard. */
+  showPasteButton?: boolean;
 };
 
 export function FileDropzone({
@@ -37,6 +40,7 @@ export function FileDropzone({
   className,
   capture,
   showCameraButton = false,
+  showPasteButton = false,
 }: FileDropzoneProps) {
   const isMobile = useIsMobile();
 
@@ -135,6 +139,14 @@ export function FileDropzone({
             </SecondaryActionButton>
           )}
         </FilePickerButton>
+      )}
+
+      {showPasteButton && (
+        <PasteImageButton
+          onImages={handleDrop}
+          disabled={disabled}
+          className="w-full"
+        />
       )}
     </div>
   );

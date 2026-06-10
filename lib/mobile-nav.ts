@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Combine,
   Home,
   Images,
@@ -57,6 +58,12 @@ export const MOBILE_NAV_ITEMS: MobileNavItem[] = [
     label: "Unlock",
     icon: LockKeyhole,
     match: (p) => p.startsWith(TOOL_ROUTES.unlock),
+  },
+  {
+    href: TOOL_ROUTES.docs,
+    label: "Docs",
+    icon: BookOpen,
+    match: (p) => p.startsWith(TOOL_ROUTES.docs),
   },
 ];
 

@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X, FileText, Image as ImageIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import { IconTouchButton } from "@/components/app-button";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/file-utils";
@@ -25,6 +26,45 @@ import type { StagedFileItem } from "@/types";
 
 function isImageFile(file: File) {
   return file.type.startsWith("image/");
+}
+
+/**
+ * Thumbnail preview for a staged file. Images render from an object URL;
+ * PDFs and images the browser can't decode (e.g. HEIC) fall back to an icon.
+ */
+function FileThumbnail({ file }: { file: File }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!isImageFile(file)) return;
+    const objectUrl = URL.createObjectURL(file);
+    // Create the URL in the effect (not render/useState) so the cleanup can
+    // revoke it and Strict Mode's remount recreates a fresh, still-valid URL.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  const showImage = !!url && !failed;
+
+  return (
+    <div className="flex items-center justify-center w-12 h-12 rounded-md bg-primary/10 overflow-hidden shrink-0">
+      {showImage ? (
+        // eslint-disable-next-line @next/next/no-img-element -- local object URL, not a remote asset
+        <img
+          src={url}
+          alt={file.name}
+          className="w-full h-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : isImageFile(file) ? (
+        <ImageIcon className="w-5 h-5 text-primary" aria-hidden />
+      ) : (
+        <FileText className="w-5 h-5 text-primary" />
+      )}
+    </div>
+  );
 }
 
 type SortableItemProps = {
@@ -69,13 +109,7 @@ function SortableItem({ item, onRemove, sortable = true }: SortableItemProps) {
         </button>
       )}
 
-      <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary/10 shrink-0">
-        {isImageFile(item.file) ? (
-          <ImageIcon className="w-5 h-5 text-primary" aria-hidden />
-        ) : (
-          <FileText className="w-5 h-5 text-primary" />
-        )}
-      </div>
+      <FileThumbnail file={item.file} />
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{item.file.name}</p>

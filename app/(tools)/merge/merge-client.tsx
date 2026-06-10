@@ -18,6 +18,8 @@ import {
 import { ToolShell } from "@/components/tool-shell";
 import { ToolLanding, ToolWorkspace } from "@/components/tool-landing";
 import { FileDropzone } from "@/components/file-dropzone";
+import { AcceptedFormats } from "@/components/accepted-formats";
+import { TOOL_SPECS } from "@/lib/tool-specs";
 import { FileList } from "@/components/file-list";
 import { ProcessingProgress } from "@/components/processing-progress";
 import { HybridProcessingFeedback } from "@/components/hybrid-processing-feedback";
@@ -512,6 +514,7 @@ export function MergeClient() {
             hint="Accepts PDF, JPEG, PNG, WebP, HEIC · large jobs run on your device"
             disabled={busy}
           />
+          <AcceptedFormats spec={TOOL_SPECS.merge} />
         </ToolLanding>
       ) : (
         <ToolWorkspace wide>

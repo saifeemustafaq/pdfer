@@ -87,6 +87,7 @@ export const TOOL_ROUTES = {
   pdfToImage: "/pdf-to-image",
   editPdf: "/edit-pdf",
   unlock: "/unlock",
+  docs: "/docs",
 } as const;
 
 /** Public source repository (update if the repo moves). */

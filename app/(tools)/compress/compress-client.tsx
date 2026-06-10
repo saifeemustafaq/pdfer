@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { ToolShell } from "@/components/tool-shell";
 import { ToolLanding, ToolWorkspace } from "@/components/tool-landing";
 import { FileDropzone } from "@/components/file-dropzone";
+import { AcceptedFormats } from "@/components/accepted-formats";
+import { TOOL_SPECS } from "@/lib/tool-specs";
 import { QualitySlider } from "@/components/quality-slider";
 import { ProcessingProgress } from "@/components/processing-progress";
 import { ProcessingBadge } from "@/components/processing-badge";
@@ -172,6 +174,7 @@ export function CompressClient() {
             hint="Accepts PDF · large jobs run on your device"
             disabled={loading}
           />
+          <AcceptedFormats spec={TOOL_SPECS.compress} />
         </ToolLanding>
       ) : (
         <ToolWorkspace>

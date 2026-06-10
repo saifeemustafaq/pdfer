@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Combine,
   Minimize2,
   Images,
@@ -24,6 +25,11 @@ export const TOOL_NAV_ITEMS: ToolNavItem[] = [
   { href: TOOL_ROUTES.imageToPdf, label: "Image to PDF", icon: Images },
   { href: TOOL_ROUTES.pdfToImage, label: "PDF to image", icon: FileImage },
   { href: TOOL_ROUTES.unlock, label: "Unlock PDF", icon: LockKeyhole },
+];
+
+/** Reference/help links, shown below the tools group in the sidebar. */
+export const REFERENCE_NAV_ITEMS: ToolNavItem[] = [
+  { href: TOOL_ROUTES.docs, label: "Docs", icon: BookOpen },
 ];
 
 export function isToolNavActive(pathname: string, href: string): boolean {

@@ -11,6 +11,8 @@ import {
 import { ToolShell } from "@/components/tool-shell";
 import { ToolLanding, ToolWorkspace } from "@/components/tool-landing";
 import { FileDropzone } from "@/components/file-dropzone";
+import { AcceptedFormats } from "@/components/accepted-formats";
+import { TOOL_SPECS } from "@/lib/tool-specs";
 import { ImageFormatPicker } from "@/components/image-format-picker";
 import { ProcessingProgress } from "@/components/processing-progress";
 import { ToolResultFooter } from "@/components/tool-result-footer";
@@ -133,6 +135,7 @@ export function PdfToImageClient() {
             hint="Accepts PDF · large jobs run on your device · email up to 6 MB"
             disabled={loading}
           />
+          <AcceptedFormats spec={TOOL_SPECS.pdfToImage} />
         </ToolLanding>
       ) : (
         <ToolWorkspace>

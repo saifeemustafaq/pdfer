@@ -17,7 +17,11 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { TOOL_NAV_ITEMS, isToolNavActive } from "@/lib/tool-nav";
+import {
+  REFERENCE_NAV_ITEMS,
+  TOOL_NAV_ITEMS,
+  isToolNavActive,
+} from "@/lib/tool-nav";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -43,6 +47,26 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {TOOL_NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+                <SidebarMenuItem key={href}>
+                  <SidebarMenuButton
+                    isActive={isToolNavActive(pathname, href)}
+                    render={<Link href={href} />}
+                    className="data-active:bg-primary data-active:font-medium data-active:text-primary-foreground data-active:hover:bg-primary data-active:hover:text-primary-foreground data-active:[&_svg]:text-primary-foreground"
+                  >
+                    <Icon />
+                    <span>{label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Reference</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {REFERENCE_NAV_ITEMS.map(({ href, label, icon: Icon }) => (
                 <SidebarMenuItem key={href}>
                   <SidebarMenuButton
                     isActive={isToolNavActive(pathname, href)}

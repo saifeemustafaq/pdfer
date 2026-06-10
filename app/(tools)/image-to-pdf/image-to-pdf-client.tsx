@@ -11,6 +11,8 @@ import {
 import { ToolShell } from "@/components/tool-shell";
 import { ToolLanding, ToolWorkspace } from "@/components/tool-landing";
 import { FileDropzone } from "@/components/file-dropzone";
+import { AcceptedFormats } from "@/components/accepted-formats";
+import { TOOL_SPECS } from "@/lib/tool-specs";
 import { FileList } from "@/components/file-list";
 import { ProcessingBadge } from "@/components/processing-badge";
 import { HybridProcessingFeedback } from "@/components/hybrid-processing-feedback";
@@ -201,6 +203,7 @@ export function ImageToPdfClient() {
             showPasteButton
             disabled={loading}
           />
+          <AcceptedFormats spec={TOOL_SPECS.imageToPdf} />
         </ToolLanding>
       ) : (
         <ToolWorkspace>

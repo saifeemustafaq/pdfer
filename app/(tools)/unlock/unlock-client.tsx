@@ -10,6 +10,8 @@ import {
 import { ToolShell } from "@/components/tool-shell";
 import { ToolLanding, ToolWorkspace } from "@/components/tool-landing";
 import { FileDropzone } from "@/components/file-dropzone";
+import { AcceptedFormats } from "@/components/accepted-formats";
+import { TOOL_SPECS } from "@/lib/tool-specs";
 import { ProcessingBadge } from "@/components/processing-badge";
 import { ToolResultFooter } from "@/components/tool-result-footer";
 import { MobileDownloadFab } from "@/components/mobile-download-fab";
@@ -198,6 +200,7 @@ export function UnlockClient() {
             label="Drop a password-protected PDF here."
             hint={`Server unlock up to ${formatBytes(MAX_SERVER_UPLOAD_BYTES)}`}
           />
+          <AcceptedFormats spec={TOOL_SPECS.unlock} />
         </ToolLanding>
       ) : (
         <ToolWorkspace>

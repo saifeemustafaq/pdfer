@@ -174,3 +174,99 @@ export async function fileToSignaturePng(file: File): Promise<Uint8Array> {
   }
   return trimmed;
 }
+
+/**
+ * Decode an uploaded image file onto a canvas at native size, without trimming
+ * or altering pixels. Used as the pristine source for interactive background
+ * removal so re-running the threshold never compounds quality loss.
+ */
+export async function decodeImageToCanvas(
+  file: File
+): Promise<HTMLCanvasElement> {
+  const bitmap = await createImageBitmap(file);
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, bitmap.width);
+    canvas.height = Math.max(1, bitmap.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not read signature image.");
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0);
+    return canvas;
+  } finally {
+    bitmap.close();
+  }
+}
+
+/** Width of the luminance ramp below the cutoff used to soften knocked-out edges. */
+const KNOCKOUT_SOFT_BAND = 24;
+
+/**
+ * Map a 0-100 "background removal" strength to a luminance cutoff. Higher
+ * strength removes more (lighter grays), lower strength removes only near-white.
+ * - strength 0   -> cutoff ~254 (only pure white)
+ * - strength 100 -> cutoff ~180 (aggressive; light grays too)
+ */
+export function knockoutStrengthToCutoff(strength: number): number {
+  const clamped = Math.max(0, Math.min(100, strength));
+  return 254 - (clamped / 100) * (254 - 180);
+}
+
+/**
+ * Return a new canvas with light backgrounds knocked out to transparency.
+ * Pixels at/above the luminance cutoff become fully transparent; pixels within
+ * a soft band just below the cutoff ramp their alpha for smooth edges; darker
+ * pixels (the ink) are kept. Keys off brightness only, so colored ink survives
+ * and any light background color is removed. Assumes a light background.
+ */
+export function applyWhiteKnockout(
+  source: HTMLCanvasElement,
+  strength: number
+): HTMLCanvasElement {
+  const width = source.width;
+  const height = source.height;
+
+  const out = document.createElement("canvas");
+  out.width = width;
+  out.height = height;
+
+  const srcCtx = source.getContext("2d");
+  const outCtx = out.getContext("2d");
+  if (!srcCtx || !outCtx || width === 0 || height === 0) return out;
+
+  const image = srcCtx.getImageData(0, 0, width, height);
+  const data = image.data;
+
+  const cutoff = knockoutStrengthToCutoff(strength);
+  const bandStart = cutoff - KNOCKOUT_SOFT_BAND;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const originalAlpha = data[i + 3];
+    if (originalAlpha === 0) continue;
+
+    const luminance =
+      0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+
+    if (luminance >= cutoff) {
+      data[i + 3] = 0;
+    } else if (luminance > bandStart) {
+      const keep = (cutoff - luminance) / KNOCKOUT_SOFT_BAND;
+      data[i + 3] = Math.round(originalAlpha * keep);
+    }
+  }
+
+  outCtx.putImageData(image, 0, 0);
+  return out;
+}
+
+/** Export a canvas as trimmed transparent PNG bytes (alpha-trims empty margins). */
+export async function canvasToSignaturePng(
+  canvas: HTMLCanvasElement
+): Promise<Uint8Array> {
+  const trimmed = await canvasToTrimmedPng(canvas);
+  if (!trimmed) {
+    throw new Error("Signature image is empty.");
+  }
+  return trimmed;
+}

@@ -10,7 +10,8 @@ import { SignaturePadField } from "@/components/signature-pad-field";
 import { SignaturePageScopePanel } from "@/components/signature-page-scope-panel";
 import { cn } from "@/lib/utils";
 import { DEFAULT_SIGNATURE_INK_COLOR } from "@/lib/constants";
-import { fileToSignaturePng } from "@/lib/signature-image";
+import { decodeImageToCanvas } from "@/lib/signature-image";
+import { SignatureBackgroundRemovalDialog } from "@/components/signature-background-removal-dialog";
 import {
   applyActivePlacementToAllSignedPages,
   applySignaturePreset,
@@ -48,6 +49,10 @@ export function PdfSignatureOptionsPanel({
   pageCount,
 }: PdfSignatureOptionsPanelProps) {
   const [inkColor, setInkColor] = useState<string>(DEFAULT_SIGNATURE_INK_COLOR);
+  const [uploadSource, setUploadSource] = useState<HTMLCanvasElement | null>(
+    null
+  );
+  const [uploadNonce, setUploadNonce] = useState(0);
   const activePlacement = getActivePlacement(spec);
 
   function updateActivePlacement(
@@ -64,21 +69,27 @@ export function PdfSignatureOptionsPanel({
     updateActivePlacement(applySignaturePreset(activePlacement, preset));
   }
 
-  const handleUploadDrop = useCallback(
-    async (files: File[]) => {
-      const file = files[0];
-      if (!file) return;
+  const handleUploadDrop = useCallback(async (files: File[]) => {
+    const file = files[0];
+    if (!file) return;
 
-      try {
-        const png = await fileToSignaturePng(file);
-        onSignatureChange(png);
-        toast.success("Signature image loaded.");
-      } catch (err) {
-        console.error("signature upload failed:", err);
-        toast.error(
-          err instanceof Error ? err.message : "Could not load signature image."
-        );
-      }
+    try {
+      const source = await decodeImageToCanvas(file);
+      setUploadSource(source);
+      setUploadNonce((n) => n + 1);
+    } catch (err) {
+      console.error("signature upload failed:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Could not load signature image."
+      );
+    }
+  }, []);
+
+  const handleRemovalConfirm = useCallback(
+    (png: Uint8Array) => {
+      onSignatureChange(png);
+      setUploadSource(null);
+      toast.success("Signature image loaded.");
     },
     [onSignatureChange]
   );
@@ -281,6 +292,14 @@ export function PdfSignatureOptionsPanel({
           </label>
         </div>
       </fieldset>
+
+      <SignatureBackgroundRemovalDialog
+        key={uploadNonce}
+        open={uploadSource !== null}
+        source={uploadSource}
+        onConfirm={handleRemovalConfirm}
+        onCancel={() => setUploadSource(null)}
+      />
     </div>
   );
 }

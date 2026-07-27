@@ -14,7 +14,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -84,7 +83,6 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
-        <SidebarSeparator className="mx-0" />
         <div className="flex items-center justify-between px-2 py-1">
           <span className="text-xs text-sidebar-foreground/70">Theme</span>
           <ThemeToggle />

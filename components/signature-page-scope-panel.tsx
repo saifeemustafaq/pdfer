@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { SecondaryActionButton } from "@/components/app-button";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,10 @@ type SignaturePageScopePanelProps = {
   onChange: (spec: SignatureSpec) => void;
   pageCount: number;
   disabled?: boolean;
+  /** Legend label, e.g. "Apply signature to". */
+  legendLabel?: string;
+  /** Summary line describing how many pages are affected on export. */
+  renderSummary?: (count: number) => ReactNode;
 };
 
 export function SignaturePageScopePanel({
@@ -21,6 +26,9 @@ export function SignaturePageScopePanel({
   onChange,
   pageCount,
   disabled = false,
+  legendLabel = "Apply signature to",
+  renderSummary = (count) =>
+    `${count} page${count !== 1 ? "s" : ""} will be signed on export.`,
 }: SignaturePageScopePanelProps) {
   function patch(partial: Partial<SignatureSpec>) {
     onChange({ ...spec, ...partial });
@@ -77,7 +85,7 @@ export function SignaturePageScopePanel({
       className={cn("space-y-3 border-0 p-0 m-0", disabled && "opacity-50")}
     >
       <legend className="text-xs font-medium text-muted-foreground">
-        Apply signature to
+        {legendLabel}
       </legend>
 
       <div className="flex flex-col gap-2">
@@ -194,7 +202,7 @@ export function SignaturePageScopePanel({
       )}
 
       <p className="text-xs text-muted-foreground">
-        {signedCount} page{signedCount !== 1 ? "s" : ""} will be signed on export.
+        {renderSummary(signedCount)}
       </p>
 
       <label className="flex items-start gap-2 rounded-lg border border-border px-3 py-2.5">

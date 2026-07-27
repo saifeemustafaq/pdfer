@@ -24,6 +24,8 @@ import {
   PdfFormSignPanel,
   DEFAULT_SIGNATURE_SPEC,
 } from "@/components/pdf-form-sign-panel";
+import { PdfImageOptionsPanel } from "@/components/pdf-image-options-panel";
+import { DEFAULT_IMAGE_SPEC } from "@/lib/image-overlay";
 import type { PageGridSummary } from "@/components/page-grid";
 import type { PageEditSpec } from "@/lib/pdf-client";
 import { exportEditedPdfFull } from "@/lib/pdf-edit-export";
@@ -64,6 +66,12 @@ const PdfSignaturePreview = dynamic(
   { ssr: false }
 );
 
+const PdfImagePreview = dynamic(
+  () =>
+    import("@/components/pdf-image-preview").then((m) => m.PdfImagePreview),
+  { ssr: false }
+);
+
 const LOCAL_PROCESSING: ProcessingInfo = {
   mode: "local",
   reason: "Page editing runs on your device",
@@ -92,6 +100,9 @@ export function EditPdfClient() {
   const [signaturePng, setSignaturePng] = useState<Uint8Array | null>(null);
   const [signatureSpec, setSignatureSpec] =
     useState<SignatureSpec>(DEFAULT_SIGNATURE_SPEC);
+  const [imageEnabled, setImageEnabled] = useState(false);
+  const [imagePng, setImagePng] = useState<Uint8Array | null>(null);
+  const [imageSpec, setImageSpec] = useState<SignatureSpec>(DEFAULT_IMAGE_SPEC);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -110,6 +121,9 @@ export function EditPdfClient() {
     setFormFillEnabled(false);
     setSignatureEnabled(false);
     setSignaturePng(null);
+    setImageEnabled(false);
+    setImagePng(null);
+    setImageSpec(DEFAULT_IMAGE_SPEC);
     setResultBlob(null);
     setWatermarkEnabled(false);
     setActiveTab("pages");
@@ -129,7 +143,7 @@ export function EditPdfClient() {
         ...prev,
         rangeEnd: preflight.pageCount ?? prev.rangeEnd,
       }));
-      setSignatureSpec((prev) => {
+      const clampSpecToPages = (prev: SignatureSpec): SignatureSpec => {
         const maxIndex = Math.max(0, (preflight.pageCount ?? 1) - 1);
         const filteredSelected = prev.selectedPages.filter(
           (index) => index <= maxIndex
@@ -143,7 +157,9 @@ export function EditPdfClient() {
               ? filteredSelected
               : [Math.min(prev.activePageIndex, maxIndex)],
         };
-      });
+      };
+      setSignatureSpec(clampSpecToPages);
+      setImageSpec(clampSpecToPages);
 
       try {
         const fields = await detectFormFields(pdf);
@@ -173,10 +189,13 @@ export function EditPdfClient() {
     setFormFillEnabled(false);
     setSignatureEnabled(false);
     setSignaturePng(null);
+    setImageEnabled(false);
+    setImagePng(null);
     setResultBlob(null);
     setWatermarkEnabled(false);
     setWatermarkSpec(DEFAULT_WATERMARK_SPEC);
     setSignatureSpec(DEFAULT_SIGNATURE_SPEC);
+    setImageSpec(DEFAULT_IMAGE_SPEC);
   }
 
   const handleEditSpecChange = useCallback((spec: PageEditSpec) => {
@@ -208,6 +227,9 @@ export function EditPdfClient() {
       signatureEnabled,
       signaturePng,
       signatureSpec,
+      imageEnabled,
+      imagePng,
+      imageSpec,
     });
   }
 
@@ -285,6 +307,26 @@ export function EditPdfClient() {
             setResultBlob(null);
           }}
           signaturePng={signaturePng}
+          pageCount={pageCount}
+        />
+      ) : activeTab === "image" ? (
+        <PdfImageOptionsPanel
+          enabled={imageEnabled}
+          onEnabledChange={(enabled) => {
+            setImageEnabled(enabled);
+            if (!enabled) setImagePng(null);
+            setResultBlob(null);
+          }}
+          spec={imageSpec}
+          onSpecChange={(spec) => {
+            setImageSpec(spec);
+            setResultBlob(null);
+          }}
+          onImageChange={(png) => {
+            setImagePng(png);
+            setResultBlob(null);
+          }}
+          imagePng={imagePng}
           pageCount={pageCount}
         />
       ) : null
@@ -423,6 +465,26 @@ export function EditPdfClient() {
                       setResultBlob(null);
                     }}
                     pageCount={pageCount}
+                    imagePng={imagePng}
+                    imageEnabled={imageEnabled}
+                    imageSpec={imageSpec}
+                  />
+                )}
+
+                {activeTab === "image" && pdfBlob && (
+                  <PdfImagePreview
+                    pdfBlob={pdfBlob}
+                    imagePng={imagePng}
+                    imageEnabled={imageEnabled}
+                    spec={imageSpec}
+                    onSpecChange={(spec) => {
+                      setImageSpec(spec);
+                      setResultBlob(null);
+                    }}
+                    pageCount={pageCount}
+                    signaturePng={signaturePng}
+                    signatureEnabled={signatureEnabled}
+                    signatureSpec={signatureSpec}
                   />
                 )}
 

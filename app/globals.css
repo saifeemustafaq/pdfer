@@ -192,15 +192,23 @@
   }
 }
 
-@layer utilities {
-  /* Mobile tab bar (4rem) + iOS home indicator */
-  .pb-mobile-nav {
+/* Mobile tab bar (4rem) + iOS home indicator.
+   Only applies below md, where the mobile tab bar (md:hidden) is visible.
+   Scoping the media query here (rather than relying on `md:pb-0` to override)
+   avoids a source-order conflict that otherwise kept the 4rem padding on
+   desktop and clipped scrollable content. */
+@utility pb-mobile-nav {
+  @media (width < 48rem) {
     padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
   }
-  .bottom-mobile-nav {
+}
+@utility bottom-mobile-nav {
+  @media (width < 48rem) {
     bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
   }
+}
 
+@layer utilities {
   /* Horizontal mobile tab bar — edge fades + peek clip */
   .mobile-tab-bar-scroll {
     padding-right: 0;

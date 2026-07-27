@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-export type EditPdfTab = "pages" | "watermark" | "sign";
+export type EditPdfTab = "pages" | "watermark" | "sign" | "image";
 
 type EditPdfTabBarProps = {
   active: EditPdfTab;
@@ -14,6 +14,7 @@ const TABS: { id: EditPdfTab; label: string }[] = [
   { id: "pages", label: "Pages" },
   { id: "watermark", label: "Watermark" },
   { id: "sign", label: "Sign & fill" },
+  { id: "image", label: "Add image" },
 ];
 
 export function EditPdfTabBar({

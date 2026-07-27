@@ -17,30 +17,30 @@ import {
   type SignatureSpec,
 } from "@/lib/pdf-form-sign";
 
-type PdfSignaturePreviewProps = {
+type PdfImagePreviewProps = {
   pdfBlob: Blob;
-  signaturePng: Uint8Array | null;
-  signatureEnabled: boolean;
+  imagePng: Uint8Array | null;
+  imageEnabled: boolean;
   spec: SignatureSpec;
   onSpecChange: (spec: SignatureSpec) => void;
   pageCount: number;
-  /** Optional added-image overlay shown as context beneath the signature. */
-  imagePng?: Uint8Array | null;
-  imageEnabled?: boolean;
-  imageSpec?: SignatureSpec;
+  /** Optional signature overlay shown as context on top of the image. */
+  signaturePng?: Uint8Array | null;
+  signatureEnabled?: boolean;
+  signatureSpec?: SignatureSpec;
 };
 
-export function PdfSignaturePreview({
+export function PdfImagePreview({
   pdfBlob,
-  signaturePng,
-  signatureEnabled,
+  imagePng,
+  imageEnabled,
   spec,
   onSpecChange,
   pageCount,
-  imagePng = null,
-  imageEnabled = false,
-  imageSpec,
-}: PdfSignaturePreviewProps) {
+  signaturePng = null,
+  signatureEnabled = false,
+  signatureSpec,
+}: PdfImagePreviewProps) {
   const previewPage = spec.activePageIndex + 1;
 
   const { pageImageUrl, renderSize, loading, error } = usePdfPagePreview(
@@ -48,39 +48,36 @@ export function PdfSignaturePreview({
     previewPage
   );
 
-  const signatureUrl = useMemo(() => {
-    if (!signatureEnabled || !signaturePng?.length) return null;
-    return bytesToDataUrl(signaturePng, "image/png");
-  }, [signatureEnabled, signaturePng]);
-
-  const imageContextUrl = useMemo(() => {
+  const imageUrl = useMemo(() => {
     if (!imageEnabled || !imagePng?.length) return null;
     return bytesToDataUrl(imagePng, "image/png");
   }, [imageEnabled, imagePng]);
 
-  const imageContextPlacement =
-    imageContextUrl &&
-    imageSpec &&
-    isPageSigned(imageSpec, spec.activePageIndex, pageCount)
-      ? getPlacementForPage(imageSpec, spec.activePageIndex)
+  const signatureContextUrl = useMemo(() => {
+    if (!signatureEnabled || !signaturePng?.length) return null;
+    return bytesToDataUrl(signaturePng, "image/png");
+  }, [signatureEnabled, signaturePng]);
+
+  const signatureContextPlacement =
+    signatureContextUrl &&
+    signatureSpec &&
+    isPageSigned(signatureSpec, spec.activePageIndex, pageCount)
+      ? getPlacementForPage(signatureSpec, spec.activePageIndex)
       : null;
 
   const imageAspect = useMemo(() => {
-    if (!signaturePng?.length) return 0.35;
+    if (!imagePng?.length) return 0.35;
     try {
-      return pngAspectRatio(signaturePng);
+      return pngAspectRatio(imagePng);
     } catch {
       return 0.35;
     }
-  }, [signaturePng]);
+  }, [imagePng]);
 
   const activePlacement = getActivePlacement(spec);
-  const pageIsSigned = isPageSigned(spec, spec.activePageIndex, pageCount);
+  const pageHasImage = isPageSigned(spec, spec.activePageIndex, pageCount);
   const canInteract =
-    signatureEnabled &&
-    !!signatureUrl &&
-    pageIsSigned &&
-    renderSize.width > 0;
+    imageEnabled && !!imageUrl && pageHasImage && renderSize.width > 0;
 
   const overlayStyle = signatureOverlayStyle(activePlacement);
   const staticPositionStyle = {
@@ -138,41 +135,34 @@ export function PdfSignaturePreview({
       onPageChange={handlePreviewPageChange}
       pageLabel={pageLabel}
       hint={
-        !signatureEnabled ? (
+        !imageEnabled ? (
           <p className="text-xs text-muted-foreground">
-            Enable the signature to preview placement on the page.
+            Enable Add image to preview placement on the page.
           </p>
-        ) : !signaturePng?.length ? (
+        ) : !imagePng?.length ? (
           <p className="text-xs text-muted-foreground">
-            Draw or upload a signature to see it on the preview.
+            Upload an image to see it on the preview.
           </p>
-        ) : !pageIsSigned ? (
+        ) : !pageHasImage ? (
           <p className="text-xs text-muted-foreground">
-            This page is not selected for signing. Pick it in the sidebar or
-            switch preview page.
+            This page is not selected. Pick it in the sidebar or switch preview
+            page.
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
-            Drag the signature to move it. Use the corner handle to resize.
+            Drag the image to move it. Use the corner handle to resize.
             {spec.perPagePlacement
               ? " Per-page mode: changes apply to this preview page only."
-              : " Placement applies to all signed pages."}
+              : " Placement applies to all selected pages."}
           </p>
         )
       }
       overlay={
         <>
-          {imageContextUrl && imageContextPlacement && (
-            <PdfOverlayImage
-              url={imageContextUrl}
-              position={imageContextPlacement}
-              alt="Added image"
-            />
-          )}
-          {signatureUrl && pageIsSigned ? (
+          {imageUrl && pageHasImage ? (
             canInteract ? (
               <SignatureDraggableOverlay
-                signatureUrl={signatureUrl}
+                signatureUrl={imageUrl}
                 position={activePlacement}
                 imageAspect={imageAspect}
                 frameWidth={renderSize.width}
@@ -182,14 +172,21 @@ export function PdfSignaturePreview({
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={signatureUrl}
-                alt="Signature preview"
+                src={imageUrl}
+                alt="Image preview"
                 className="pdf-preview-overlay-signature pointer-events-none absolute h-auto opacity-50"
                 style={staticPositionStyle}
                 draggable={false}
               />
             )
           ) : null}
+          {signatureContextUrl && signatureContextPlacement && (
+            <PdfOverlayImage
+              url={signatureContextUrl}
+              position={signatureContextPlacement}
+              alt="Signature"
+            />
+          )}
         </>
       }
     />

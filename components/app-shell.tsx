@@ -17,7 +17,7 @@ export function AppShell({ children, className }: AppShellProps) {
         <SidebarInset
           className={cn(
             "flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto",
-            "pb-mobile-nav md:pb-0 md:pl-(--sidebar-width)",
+            "pb-mobile-nav md:pl-(--sidebar-width)",
             className
           )}
         >

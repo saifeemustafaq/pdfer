@@ -10,7 +10,7 @@ const tools = [
     href: TOOL_ROUTES.merge,
     icon: Combine,
     jobLabel: "Make one file",
-    title: "Merge PDFs",
+    title: "Merge PDF",
     description: "Combine PDFs and images. Reorder files, remove pages.",
     actionLabel: "Combine files",
   },
@@ -33,7 +33,7 @@ const tools = [
   {
     href: TOOL_ROUTES.editPdf,
     icon: LayoutGrid,
-    jobLabel: "Edit PDF",
+    jobLabel: "Reorder & sign",
     title: "Edit PDF",
     description: "Reorder pages, watermark, fill forms, or sign.",
     actionLabel: "Edit PDF",

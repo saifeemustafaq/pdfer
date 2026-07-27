@@ -4,10 +4,12 @@
 import { exportEditedPdf, type PageEditSpec } from "@/lib/pdf-client";
 import { applyTextWatermark, type WatermarkSpec } from "@/lib/pdf-watermark";
 import {
+  applySignatures,
   exportFormSignPdf,
   type FormFieldMeta,
   type SignatureSpec,
 } from "@/lib/pdf-form-sign";
+import { DEFAULT_IMAGE_SPEC } from "@/lib/image-overlay";
 
 export type EditExportOptions = {
   pageEdit?: PageEditSpec | null;
@@ -18,6 +20,9 @@ export type EditExportOptions = {
   signatureEnabled?: boolean;
   signaturePng?: Uint8Array | null;
   signatureSpec?: SignatureSpec;
+  imageEnabled?: boolean;
+  imagePng?: Uint8Array | null;
+  imageSpec?: SignatureSpec;
 };
 
 /** Apply page edits, watermark, form fill, and signature in order. */
@@ -42,6 +47,17 @@ export async function exportEditedPdfFull(
     Object.keys(options.fieldValues).length > 0;
   const hasSignature =
     !!options.signatureEnabled && !!options.signaturePng?.length;
+
+  // Image overlay embeds the uploaded PNG as-is (applySignatures is a generic
+  // PNG stamp: embed + place per SignatureSpec). Applied before the signature
+  // so a signature (e.g. a cross-sign) lands on top of the image.
+  if (options.imageEnabled && options.imagePng?.length) {
+    working = await applySignatures(
+      working,
+      options.imagePng,
+      options.imageSpec ?? DEFAULT_IMAGE_SPEC
+    );
+  }
 
   if (hasForm || hasSignature) {
     working = await exportFormSignPdf(working, {

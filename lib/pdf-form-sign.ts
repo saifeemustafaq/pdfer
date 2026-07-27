@@ -81,13 +81,20 @@ export function applySignaturePreset(
   return { ...current, ...SIGNATURE_PLACEMENT_PRESETS[preset] };
 }
 
-/** Normalized signature height as a fraction of page height. */
+/**
+ * Normalized overlay height as a fraction of page height.
+ *
+ * width is a fraction of page width, imageAspect is imgHeight/imgWidth, and
+ * pageAspect is pageWidth/pageHeight. Draw height in points is
+ * (width * pageWidth) * imageAspect, so as a fraction of page height that is
+ * width * imageAspect * (pageWidth / pageHeight) = width * imageAspect * pageAspect.
+ */
 export function signatureHeightNorm(
   width: number,
   imageAspect: number,
   pageAspect: number
 ): number {
-  return (width * imageAspect) / pageAspect;
+  return width * imageAspect * pageAspect;
 }
 
 /** Keep signature within page bounds for a given image and page aspect ratio. */

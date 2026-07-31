@@ -16,6 +16,8 @@ type PdfPagePreviewFrameProps = {
   error: string | null;
   pageAlt: string;
   overlay?: ReactNode;
+  /** Floating overlay (e.g. a contextual toolbar) drawn over the preview box. */
+  toolbar?: ReactNode;
   hint?: ReactNode;
   className?: string;
   /** 1-based page number for prev/next controls. */
@@ -34,6 +36,7 @@ export function PdfPagePreviewFrame({
   error,
   pageAlt,
   overlay,
+  toolbar,
   hint,
   className,
   pageNumber,
@@ -79,7 +82,11 @@ export function PdfPagePreviewFrame({
         {pageLabel}
       </div>
 
-      <div className="flex justify-center rounded-lg border border-border bg-muted/20 p-3">
+      <div
+        data-preview-box
+        className="relative flex justify-center rounded-lg border border-border bg-muted/20 p-3"
+      >
+        {toolbar}
         {loading && <Skeleton className="h-[320px] w-full max-w-[420px]" />}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {previewContent &&

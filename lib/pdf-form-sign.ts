@@ -1,15 +1,9 @@
 /**
- * Client-side PDF form fill and signature overlay (pdf-lib).
+ * Client-side PDF signature/image overlay placement helpers (pdf-lib).
+ *
+ * Shared by the "Add image" tab and reused by the annotation export engine.
  */
-import { PDFDocument, PDFCheckBox, PDFDropdown, PDFRadioGroup, PDFTextField } from "pdf-lib";
-
-export type FormFieldKind = "text" | "checkbox" | "dropdown" | "radio";
-
-export type FormFieldMeta = {
-  name: string;
-  kind: FormFieldKind;
-  options?: string[];
-};
+import { PDFDocument, degrees } from "pdf-lib";
 
 export type SignaturePosition = {
   /** Normalized 0–1 from left edge. */
@@ -18,6 +12,8 @@ export type SignaturePosition = {
   y: number;
   /** Width as fraction of page width. */
   width: number;
+  /** Clockwise rotation in degrees around the image center (0 = upright). */
+  rotation?: number;
 };
 
 export type SignaturePageScope = "all" | "range" | "selected";
@@ -115,6 +111,7 @@ export function clampSignaturePosition(
     x: Math.max(0, Math.min(maxX, position.x)),
     y: Math.max(0, Math.min(maxY, position.y)),
     width,
+    rotation: position.rotation ?? 0,
   };
 }
 
@@ -229,84 +226,6 @@ export function signatureOverlayStyle(
   };
 }
 
-/** List fillable AcroForm fields in a PDF. */
-export async function detectFormFields(pdfBlob: Blob): Promise<FormFieldMeta[]> {
-  const buffer = await pdfBlob.arrayBuffer();
-  const doc = await PDFDocument.load(buffer);
-  const form = doc.getForm();
-  const fields = form.getFields();
-  const result: FormFieldMeta[] = [];
-
-  for (const field of fields) {
-    const name = field.getName();
-
-    if (field instanceof PDFTextField) {
-      result.push({ name, kind: "text" });
-    } else if (field instanceof PDFCheckBox) {
-      result.push({ name, kind: "checkbox" });
-    } else if (field instanceof PDFDropdown) {
-      result.push({ name, kind: "dropdown", options: field.getOptions() });
-    } else if (field instanceof PDFRadioGroup) {
-      result.push({ name, kind: "radio", options: field.getOptions() });
-    }
-  }
-
-  return result;
-}
-
-function applyFieldValue(
-  doc: PDFDocument,
-  meta: FormFieldMeta,
-  value: string | boolean
-): void {
-  const form = doc.getForm();
-  const field = form.getField(meta.name);
-
-  switch (meta.kind) {
-    case "text": {
-      (field as PDFTextField).setText(String(value));
-      break;
-    }
-    case "checkbox": {
-      const box = field as PDFCheckBox;
-      if (value === true || value === "true" || value === "yes") {
-        box.check();
-      } else {
-        box.uncheck();
-      }
-      break;
-    }
-    case "dropdown": {
-      (field as PDFDropdown).select(String(value));
-      break;
-    }
-    case "radio": {
-      (field as PDFRadioGroup).select(String(value));
-      break;
-    }
-    default:
-      break;
-  }
-}
-
-/** Fill AcroForm fields and return a new PDF blob. */
-export async function fillFormFields(
-  pdfBlob: Blob,
-  values: Record<string, string | boolean>,
-  fieldMeta: FormFieldMeta[]
-): Promise<Blob> {
-  const buffer = await pdfBlob.arrayBuffer();
-  const doc = await PDFDocument.load(buffer);
-
-  for (const meta of fieldMeta) {
-    if (!(meta.name in values)) continue;
-    applyFieldValue(doc, meta, values[meta.name]);
-  }
-
-  const bytes = await doc.save();
-  return new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
-}
-
 function drawSignatureOnPage(
   page: ReturnType<PDFDocument["getPage"]>,
   image: Awaited<ReturnType<PDFDocument["embedPng"]>>,
@@ -318,12 +237,35 @@ function drawSignatureOnPage(
   const clamped = clampSignaturePosition(position, imageAspect, pageAspect);
   const drawWidth = pageWidth * clamped.width;
   const drawHeight = drawWidth * imageAspect;
+  const boxX = pageWidth * clamped.x;
+  const boxY = pageHeight * clamped.y;
+  const rotationCw = clamped.rotation ?? 0;
 
+  if (!rotationCw) {
+    page.drawImage(image, {
+      x: boxX,
+      y: boxY,
+      width: drawWidth,
+      height: drawHeight,
+    });
+    return;
+  }
+
+  // pdf-lib rotates images around their lower-left origin, so pre-rotate the
+  // origin around the box center to keep the rotation centered. PDF space is
+  // y-up/CCW-positive while our stored angle is y-down/CW-positive, hence -deg.
+  const center = { x: boxX + drawWidth / 2, y: boxY + drawHeight / 2 };
+  const phi = (-rotationCw * Math.PI) / 180;
+  const cos = Math.cos(phi);
+  const sin = Math.sin(phi);
+  const dx = boxX - center.x;
+  const dy = boxY - center.y;
   page.drawImage(image, {
-    x: pageWidth * clamped.x,
-    y: pageHeight * clamped.y,
+    x: center.x + dx * cos - dy * sin,
+    y: center.y + dx * sin + dy * cos,
     width: drawWidth,
     height: drawHeight,
+    rotate: degrees(-rotationCw),
   });
 }
 
@@ -359,31 +301,4 @@ export async function applySignatures(
 
   const bytes = await doc.save();
   return new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
-}
-
-/** Export pipeline: optional form fill then signature overlay. */
-export async function exportFormSignPdf(
-  pdfBlob: Blob,
-  options: {
-    fieldMeta?: FormFieldMeta[];
-    fieldValues?: Record<string, string | boolean>;
-    signaturePng?: Uint8Array | null;
-    signatureSpec?: SignatureSpec;
-  }
-): Promise<Blob> {
-  let working = pdfBlob;
-
-  if (options.fieldMeta?.length && options.fieldValues) {
-    working = await fillFormFields(working, options.fieldValues, options.fieldMeta);
-  }
-
-  if (options.signaturePng?.length) {
-    working = await applySignatures(
-      working,
-      options.signaturePng,
-      options.signatureSpec ?? DEFAULT_SIGNATURE_SPEC
-    );
-  }
-
-  return working;
 }

@@ -97,7 +97,7 @@ export const TOOL_SPECS: Record<
     inputSummary:
       "Exactly one PDF. Password-protected PDFs aren't supported — unlock it first.",
     output: "One edited PDF.",
-    note: "Reorder pages, watermark, fill forms, or sign. Runs on your device.",
+    note: "Reorder pages, watermark, sign, or annotate. Runs on your device.",
   },
   imageToPdf: {
     key: "imageToPdf",

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
-import { Eraser, Maximize2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Eraser, Maximize2, Undo2, Redo2 } from "lucide-react";
 import { IconTouchButton, SecondaryActionButton } from "@/components/app-button";
 import {
   Tooltip,
@@ -48,6 +48,55 @@ export function SignaturePad({
   const skipExternalLoadRef = useRef(false);
   inkColorRef.current = inkColor;
 
+  // Per-stroke snapshot history for undo/redo. history[0] is the pristine
+  // baseline (blank or the loaded signature); each completed stroke pushes a
+  // new full-resolution ImageData snapshot.
+  const historyRef = useRef<ImageData[]>([]);
+  const historyIndexRef = useRef(0);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const MAX_HISTORY = 50;
+
+  const updateHistoryFlags = useCallback(() => {
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+  }, []);
+
+  const snapshotCanvas = useCallback((): ImageData | null => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || canvas.width === 0 || canvas.height === 0) {
+      return null;
+    }
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+  }, []);
+
+  const resetHistory = useCallback(() => {
+    const baseline = snapshotCanvas();
+    historyRef.current = baseline ? [baseline] : [];
+    historyIndexRef.current = 0;
+    updateHistoryFlags();
+  }, [snapshotCanvas, updateHistoryFlags]);
+
+  const pushHistory = useCallback(() => {
+    const snap = snapshotCanvas();
+    if (!snap) return;
+    const kept = historyRef.current.slice(0, historyIndexRef.current + 1);
+    kept.push(snap);
+    const overflow = kept.length - MAX_HISTORY;
+    historyRef.current = overflow > 0 ? kept.slice(overflow) : kept;
+    historyIndexRef.current = historyRef.current.length - 1;
+    updateHistoryFlags();
+  }, [snapshotCanvas, updateHistoryFlags]);
+
+  const restoreHistory = useCallback((index: number) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    const snap = historyRef.current[index];
+    if (!canvas || !ctx || !snap) return;
+    ctx.putImageData(snap, 0, 0);
+  }, []);
+
   const exportSignature = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas || disabled) {
@@ -64,10 +113,11 @@ export function SignaturePad({
     if (!canvas) return;
     if (initialPng?.length) {
       await loadPngOntoCanvas(canvas, initialPng, inkColorRef.current, size);
-      return;
+    } else {
+      initSignatureCanvas(canvas, inkColorRef.current, size);
     }
-    initSignatureCanvas(canvas, inkColorRef.current, size);
-  }, [initialPng, size]);
+    resetHistory();
+  }, [initialPng, size, resetHistory]);
 
   useEffect(() => {
     if (skipExternalLoadRef.current) {
@@ -126,6 +176,25 @@ export function SignaturePad({
     const canvas = canvasRef.current;
     if (!canvas?.hasPointerCapture(event.pointerId)) return;
     canvas.releasePointerCapture(event.pointerId);
+    pushHistory();
+    void exportSignature();
+  }
+
+  function handleUndo() {
+    if (disabled || historyIndexRef.current <= 0) return;
+    historyIndexRef.current -= 1;
+    restoreHistory(historyIndexRef.current);
+    updateHistoryFlags();
+    void exportSignature();
+  }
+
+  function handleRedo() {
+    if (disabled || historyIndexRef.current >= historyRef.current.length - 1) {
+      return;
+    }
+    historyIndexRef.current += 1;
+    restoreHistory(historyIndexRef.current);
+    updateHistoryFlags();
     void exportSignature();
   }
 
@@ -133,6 +202,7 @@ export function SignaturePad({
     const canvas = canvasRef.current;
     if (!canvas) return;
     initSignatureCanvas(canvas, inkColorRef.current, size);
+    resetHistory();
     skipExternalLoadRef.current = true;
     onChange(null);
   }
@@ -173,6 +243,26 @@ export function SignaturePad({
             <TooltipContent>Larger signing area</TooltipContent>
           </Tooltip>
         )}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <SecondaryActionButton
+          type="button"
+          onClick={handleUndo}
+          disabled={disabled || !canUndo}
+          aria-label="Undo last stroke"
+        >
+          <Undo2 className="size-4" />
+          Undo
+        </SecondaryActionButton>
+        <SecondaryActionButton
+          type="button"
+          onClick={handleRedo}
+          disabled={disabled || !canRedo}
+          aria-label="Redo stroke"
+        >
+          <Redo2 className="size-4" />
+          Redo
+        </SecondaryActionButton>
       </div>
       <SecondaryActionButton
         type="button"

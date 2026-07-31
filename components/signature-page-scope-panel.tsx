@@ -19,6 +19,8 @@ type SignaturePageScopePanelProps = {
   legendLabel?: string;
   /** Summary line describing how many pages are affected on export. */
   renderSummary?: (count: number) => ReactNode;
+  /** Pages marked for removal elsewhere; hidden from the "Pick pages" list. */
+  excludedPages?: Set<number>;
 };
 
 export function SignaturePageScopePanel({
@@ -29,7 +31,10 @@ export function SignaturePageScopePanel({
   legendLabel = "Apply signature to",
   renderSummary = (count) =>
     `${count} page${count !== 1 ? "s" : ""} will be signed on export.`,
+  excludedPages,
 }: SignaturePageScopePanelProps) {
+  const isExcluded = (index: number) => excludedPages?.has(index) ?? false;
+
   function patch(partial: Partial<SignatureSpec>) {
     onChange({ ...spec, ...partial });
   }
@@ -47,7 +52,9 @@ export function SignaturePageScopePanel({
     if (scope === "selected") {
       const selectedPages =
         spec.selectedPages.length > 0
-          ? spec.selectedPages.filter((index) => index >= 0 && index < pageCount)
+          ? spec.selectedPages.filter(
+              (index) => index >= 0 && index < pageCount && !isExcluded(index)
+            )
           : [Math.min(spec.activePageIndex, Math.max(0, pageCount - 1))];
       patch({
         pageScope: scope,
@@ -69,7 +76,9 @@ export function SignaturePageScopePanel({
 
   function selectAllPages() {
     patch({
-      selectedPages: Array.from({ length: pageCount }, (_, index) => index),
+      selectedPages: Array.from({ length: pageCount }, (_, index) => index).filter(
+        (index) => !isExcluded(index)
+      ),
     });
   }
 
@@ -77,7 +86,9 @@ export function SignaturePageScopePanel({
     patch({ selectedPages: [spec.activePageIndex] });
   }
 
-  const signedCount = getSignedPageIndices(spec, pageCount).length;
+  const signedCount = getSignedPageIndices(spec, pageCount).filter(
+    (index) => !isExcluded(index)
+  ).length;
 
   return (
     <fieldset
@@ -171,7 +182,9 @@ export function SignaturePageScopePanel({
           </div>
           <div className="max-h-32 overflow-y-auto rounded-md border border-border p-2">
             <div className="flex flex-wrap gap-2">
-              {Array.from({ length: pageCount }, (_, pageIndex) => {
+              {Array.from({ length: pageCount }, (_, pageIndex) => pageIndex)
+                .filter((pageIndex) => !isExcluded(pageIndex))
+                .map((pageIndex) => {
                 const checked = spec.selectedPages.includes(pageIndex);
                 return (
                   <label

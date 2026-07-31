@@ -4,25 +4,12 @@ import {
   applySignaturePreset,
   applySignatures,
   clampSignaturePosition,
-  detectFormFields,
-  fillFormFields,
   getSignedPageIndices,
   getPlacementForPage,
   setActivePlacement,
   SIGNATURE_PLACEMENT_PRESETS,
   type SignatureSpec,
 } from "./pdf-form-sign";
-
-async function createFormPdf(): Promise<Blob> {
-  const doc = await PDFDocument.create();
-  doc.addPage([400, 400]);
-  const form = doc.getForm();
-  const field = form.createTextField("applicant.name");
-  field.setText("Original");
-  field.addToPage(doc.getPage(0), { x: 50, y: 300, width: 200, height: 20 });
-  const bytes = await doc.save();
-  return new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
-}
 
 async function createMultiPagePdf(pages: number): Promise<Blob> {
   const doc = await PDFDocument.create();
@@ -49,24 +36,6 @@ async function createTinyPng(): Promise<Uint8Array> {
     0x60, 0x82,
   ]);
 }
-
-describe("detectFormFields", () => {
-  it("finds text fields in a PDF form", async () => {
-    const blob = await createFormPdf();
-    const fields = await detectFormFields(blob);
-    expect(fields.some((field) => field.name === "applicant.name")).toBe(true);
-  });
-});
-
-describe("fillFormFields", () => {
-  it("updates text field values", async () => {
-    const blob = await createFormPdf();
-    const fields = await detectFormFields(blob);
-    const filled = await fillFormFields(blob, { "applicant.name": "Updated" }, fields);
-    const doc = await PDFDocument.load(await filled.arrayBuffer());
-    expect(doc.getForm().getTextField("applicant.name").getText()).toBe("Updated");
-  });
-});
 
 describe("applySignaturePreset", () => {
   it("updates x/y/width from preset", () => {

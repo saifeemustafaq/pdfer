@@ -35,7 +35,7 @@ const tools = [
     icon: LayoutGrid,
     jobLabel: "Reorder & sign",
     title: "Edit PDF",
-    description: "Reorder pages, watermark, fill forms, or sign.",
+    description: "Reorder pages, watermark, sign, and annotate.",
     actionLabel: "Edit PDF",
   },
   {

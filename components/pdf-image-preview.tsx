@@ -7,6 +7,7 @@ import { PdfOverlayImage } from "@/components/pdf-overlay-image";
 import { SignatureDraggableOverlay } from "@/components/signature-draggable-overlay";
 import { usePdfPagePreview } from "@/hooks/use-pdf-page-preview";
 import { bytesToDataUrl } from "@/lib/image-data-url";
+import { resolveKeptPage } from "@/lib/page-nav";
 import {
   getActivePlacement,
   getPlacementForPage,
@@ -28,6 +29,8 @@ type PdfImagePreviewProps = {
   signaturePng?: Uint8Array | null;
   signatureEnabled?: boolean;
   signatureSpec?: SignatureSpec;
+  /** Pages marked for removal in the Pages tab (skipped during navigation). */
+  removedPages?: Set<number>;
 };
 
 export function PdfImagePreview({
@@ -40,6 +43,7 @@ export function PdfImagePreview({
   signaturePng = null,
   signatureEnabled = false,
   signatureSpec,
+  removedPages,
 }: PdfImagePreviewProps) {
   const previewPage = spec.activePageIndex + 1;
 
@@ -84,16 +88,17 @@ export function PdfImagePreview({
     "--sig-left": overlayStyle.left,
     "--sig-bottom": overlayStyle.bottom,
     "--sig-width": overlayStyle.width,
+    transform: activePlacement.rotation
+      ? `rotate(${activePlacement.rotation}deg)`
+      : undefined,
   } as CSSProperties;
 
   function handlePreviewPageChange(pageNumber: number) {
-    onSpecChange({
-      ...spec,
-      activePageIndex: Math.max(
-        0,
-        Math.min(pageNumber - 1, Math.max(0, pageCount - 1))
-      ),
-    });
+    const target = pageNumber - 1;
+    const resolved = removedPages
+      ? resolveKeptPage(target, spec.activePageIndex, removedPages, pageCount)
+      : Math.max(0, Math.min(target, Math.max(0, pageCount - 1)));
+    onSpecChange({ ...spec, activePageIndex: resolved });
   }
 
   function handlePlacementChange(position: typeof activePlacement) {
@@ -150,7 +155,8 @@ export function PdfImagePreview({
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
-            Drag the image to move it. Use the corner handle to resize.
+            Drag the image to move it, the corner handle to resize, or the
+            handle above it to rotate.
             {spec.perPagePlacement
               ? " Per-page mode: changes apply to this preview page only."
               : " Placement applies to all selected pages."}

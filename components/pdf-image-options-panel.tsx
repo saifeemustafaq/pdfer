@@ -9,13 +9,11 @@ import { FilePickerButton } from "@/components/file-picker-button";
 import { SignaturePageScopePanel } from "@/components/signature-page-scope-panel";
 import { cn } from "@/lib/utils";
 import { fileToImagePng } from "@/lib/image-overlay";
+import { resolveKeptPage } from "@/lib/page-nav";
 import {
   applyActivePlacementToAllSignedPages,
-  applySignaturePreset,
   getActivePlacement,
   setActivePlacement,
-  SIGNATURE_PLACEMENT_PRESETS,
-  type SignaturePlacementPreset,
   type SignaturePosition,
   type SignatureSpec,
 } from "@/lib/pdf-form-sign";
@@ -28,13 +26,9 @@ type PdfImageOptionsPanelProps = {
   onImageChange: (pngBytes: Uint8Array | null) => void;
   imagePng?: Uint8Array | null;
   pageCount: number;
+  /** Pages marked for removal in the Pages tab (excluded from targeting). */
+  removedPages?: Set<number>;
 };
-
-const PLACEMENT_PRESETS: { id: SignaturePlacementPreset; label: string }[] = [
-  { id: "bottom-left", label: "Bottom left" },
-  { id: "bottom-center", label: "Bottom center" },
-  { id: "bottom-right", label: "Bottom right" },
-];
 
 export function PdfImageOptionsPanel({
   enabled,
@@ -44,6 +38,7 @@ export function PdfImageOptionsPanel({
   onImageChange,
   imagePng = null,
   pageCount,
+  removedPages,
 }: PdfImageOptionsPanelProps) {
   const activePlacement = getActivePlacement(spec);
 
@@ -55,10 +50,6 @@ export function PdfImageOptionsPanel({
         ? (patch as SignaturePosition)
         : { ...activePlacement, ...patch };
     onSpecChange(setActivePlacement(spec, next));
-  }
-
-  function applyPreset(preset: SignaturePlacementPreset) {
-    updateActivePlacement(applySignaturePreset(activePlacement, preset));
   }
 
   const handleUploadDrop = useCallback(
@@ -140,6 +131,7 @@ export function PdfImageOptionsPanel({
           onChange={onSpecChange}
           pageCount={pageCount}
           disabled={!enabled}
+          excludedPages={removedPages}
           legendLabel="Add image to"
           renderSummary={(count) =>
             `Image will be added to ${count} page${count !== 1 ? "s" : ""} on export.`
@@ -171,18 +163,18 @@ export function PdfImageOptionsPanel({
               min={1}
               max={Math.max(1, pageCount)}
               value={spec.activePageIndex + 1}
-              onChange={(e) =>
-                onSpecChange({
-                  ...spec,
-                  activePageIndex: Math.max(
-                    0,
-                    Math.min(
-                      (Number.parseInt(e.target.value, 10) || 1) - 1,
-                      Math.max(0, pageCount - 1)
+              onChange={(e) => {
+                const target = (Number.parseInt(e.target.value, 10) || 1) - 1;
+                const resolved = removedPages
+                  ? resolveKeptPage(
+                      target,
+                      spec.activePageIndex,
+                      removedPages,
+                      pageCount
                     )
-                  ),
-                })
-              }
+                  : Math.max(0, Math.min(target, Math.max(0, pageCount - 1)));
+                onSpecChange({ ...spec, activePageIndex: resolved });
+              }}
               disabled={!enabled}
             />
           </label>
@@ -208,36 +200,6 @@ export function PdfImageOptionsPanel({
             />
           </label>
         </div>
-
-        <fieldset className="space-y-2">
-          <legend className="text-xs font-medium text-muted-foreground">
-            Position preset
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            {PLACEMENT_PRESETS.map(({ id, label }) => {
-              const preset = SIGNATURE_PLACEMENT_PRESETS[id];
-              const active =
-                Math.abs(activePlacement.x - preset.x) < 0.001 &&
-                Math.abs(activePlacement.y - preset.y) < 0.001;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  disabled={!enabled}
-                  onClick={() => applyPreset(id)}
-                  className={cn(
-                    "rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
-                    active
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border hover:border-primary/40"
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
 
         <div className="grid grid-cols-2 gap-2">
           <label className="space-y-1.5">
@@ -283,6 +245,26 @@ export function PdfImageOptionsPanel({
             />
           </label>
         </div>
+
+        <label className="space-y-1.5">
+          <span className="text-xs font-medium text-muted-foreground">
+            Rotation (degrees)
+          </span>
+          <Input
+            type="number"
+            min={0}
+            max={359}
+            value={Math.round(activePlacement.rotation ?? 0)}
+            onChange={(e) => {
+              const raw = Number.parseInt(e.target.value, 10) || 0;
+              updateActivePlacement({ rotation: ((raw % 360) + 360) % 360 });
+            }}
+            disabled={!enabled}
+          />
+          <span className="block text-[11px] text-muted-foreground">
+            Or drag the rotate handle above the image on the preview.
+          </span>
+        </label>
       </fieldset>
     </div>
   );

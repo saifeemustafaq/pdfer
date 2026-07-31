@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { Input } from "@/components/ui/input";
 import { PdfPagePreviewFrame } from "@/components/pdf-page-preview-frame";
 import { cn } from "@/lib/utils";
 import { usePdfPagePreview } from "@/hooks/use-pdf-page-preview";
+import { resolveKeptPage } from "@/lib/page-nav";
 import {
   resolveWatermarkFontSize,
   resolveWatermarkRotation,
@@ -16,6 +17,8 @@ type PdfWatermarkPreviewProps = {
   spec: WatermarkSpec;
   enabled: boolean;
   pageCount: number;
+  /** Pages marked for removal in the Pages tab (skipped during navigation). */
+  removedPages?: Set<number>;
 };
 
 export function PdfWatermarkPreview({
@@ -23,17 +26,34 @@ export function PdfWatermarkPreview({
   spec,
   enabled,
   pageCount,
+  removedPages,
 }: PdfWatermarkPreviewProps) {
   const [previewPage, setPreviewPage] = useState(1);
 
-  useEffect(() => {
-    if (previewPage > pageCount) {
-      setPreviewPage(Math.max(1, pageCount));
-    }
-  }, [pageCount, previewPage]);
+  // Derived (not stored): clamp to the page count and, if the stored page has
+  // been removed in the Pages tab, preview the nearest kept page instead so the
+  // preview always matches what export will produce.
+  const clampedPage = Math.min(Math.max(1, previewPage), Math.max(1, pageCount));
+  const effectivePage =
+    removedPages && pageCount > 0 && removedPages.has(clampedPage - 1)
+      ? resolveKeptPage(
+          clampedPage - 1,
+          clampedPage - 1,
+          removedPages,
+          pageCount
+        ) + 1
+      : clampedPage;
+
+  function changePreviewPage(pageNumber: number) {
+    const target = pageNumber - 1;
+    const resolved = removedPages
+      ? resolveKeptPage(target, effectivePage - 1, removedPages, pageCount)
+      : Math.max(0, Math.min(target, Math.max(0, pageCount - 1)));
+    setPreviewPage(resolved + 1);
+  }
 
   const { pageImageUrl, renderSize, pagePtSize, loading, error } =
-    usePdfPagePreview(pdfBlob, previewPage);
+    usePdfPagePreview(pdfBlob, effectivePage);
 
   const overlay = useMemo(() => {
     if (!enabled || !spec.text.trim() || !pagePtSize.width || !renderSize.width) {
@@ -68,9 +88,9 @@ export function PdfWatermarkPreview({
           type="number"
           min={1}
           max={pageCount}
-          value={previewPage}
+          value={effectivePage}
           onChange={(e) =>
-            setPreviewPage(
+            changePreviewPage(
               Math.min(
                 pageCount,
                 Math.max(1, Number.parseInt(e.target.value, 10) || 1)
@@ -89,10 +109,10 @@ export function PdfWatermarkPreview({
       pageImageUrl={pageImageUrl}
       loading={loading}
       error={error}
-      pageAlt={`Page ${previewPage} preview`}
-      pageNumber={previewPage}
+      pageAlt={`Page ${effectivePage} preview`}
+      pageNumber={effectivePage}
       pageCount={pageCount}
-      onPageChange={setPreviewPage}
+      onPageChange={changePreviewPage}
       pageLabel={pageLabel}
       hint={
         !enabled ? (

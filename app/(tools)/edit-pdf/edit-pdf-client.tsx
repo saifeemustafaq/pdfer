@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { LayoutGrid, Loader2, X, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -20,20 +20,23 @@ import { MobileOutputDrawer } from "@/components/mobile-output-drawer";
 import { EncryptedPdfNotice } from "@/components/encrypted-pdf-notice";
 import { EditPdfTabBar, type EditPdfTab } from "@/components/edit-pdf-tab-bar";
 import { PdfWatermarkPanel } from "@/components/pdf-watermark-panel";
-import {
-  PdfFormSignPanel,
-  DEFAULT_SIGNATURE_SPEC,
-} from "@/components/pdf-form-sign-panel";
+import { PdfAnnotationPanel } from "@/components/pdf-annotation-panel";
 import { PdfImageOptionsPanel } from "@/components/pdf-image-options-panel";
 import { DEFAULT_IMAGE_SPEC } from "@/lib/image-overlay";
 import type { PageGridSummary } from "@/components/page-grid";
 import type { PageEditSpec } from "@/lib/pdf-client";
 import { exportEditedPdfFull } from "@/lib/pdf-edit-export";
+import { pngAspectRatio, type SignatureSpec } from "@/lib/pdf-form-sign";
 import {
-  detectFormFields,
-  type FormFieldMeta,
-  type SignatureSpec,
-} from "@/lib/pdf-form-sign";
+  createAnnotation,
+  countOnPage,
+  deleteAnnotation,
+  pageHasSignature,
+  removeSignaturesOnPage,
+  updateAnnotation,
+  type Annotation,
+  type AnnotationType,
+} from "@/lib/pdf-annotations";
 import {
   DEFAULT_WATERMARK_SPEC,
   type WatermarkSpec,
@@ -58,10 +61,10 @@ const PdfWatermarkPreview = dynamic(
   { ssr: false }
 );
 
-const PdfSignaturePreview = dynamic(
+const PdfAnnotationPreview = dynamic(
   () =>
-    import("@/components/pdf-signature-preview").then(
-      (m) => m.PdfSignaturePreview
+    import("@/components/pdf-annotation-preview").then(
+      (m) => m.PdfAnnotationPreview
     ),
   { ssr: false }
 );
@@ -77,6 +80,17 @@ const LOCAL_PROCESSING: ProcessingInfo = {
   reason: "Page editing runs on your device",
 };
 
+/** First page index (0-based) that is not marked for removal, or null. */
+function firstKeptPage(
+  removedPages: Set<number>,
+  pageCount: number
+): number | null {
+  for (let index = 0; index < pageCount; index++) {
+    if (!removedPages.has(index)) return index;
+  }
+  return null;
+}
+
 export function EditPdfClient() {
   const [file, setFile] = useState<File | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
@@ -91,20 +105,51 @@ export function EditPdfClient() {
   const [watermarkEnabled, setWatermarkEnabled] = useState(false);
   const [watermarkSpec, setWatermarkSpec] =
     useState<WatermarkSpec>(DEFAULT_WATERMARK_SPEC);
-  const [formFields, setFormFields] = useState<FormFieldMeta[]>([]);
-  const [formFillEnabled, setFormFillEnabled] = useState(false);
-  const [fieldValues, setFieldValues] = useState<
-    Record<string, string | boolean>
-  >({});
   const [signatureEnabled, setSignatureEnabled] = useState(false);
   const [signaturePng, setSignaturePng] = useState<Uint8Array | null>(null);
-  const [signatureSpec, setSignatureSpec] =
-    useState<SignatureSpec>(DEFAULT_SIGNATURE_SPEC);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<
+    string | null
+  >(null);
+  const [signPageIndex, setSignPageIndex] = useState(0);
   const [imageEnabled, setImageEnabled] = useState(false);
   const [imagePng, setImagePng] = useState<Uint8Array | null>(null);
   const [imageSpec, setImageSpec] = useState<SignatureSpec>(DEFAULT_IMAGE_SPEC);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Pages marked for removal in the Pages tab. Kept in sync so the Sign, Image,
+  // and Watermark tabs never let you act on a page that won't exist on export.
+  const removedPages = useMemo(() => {
+    const removed = new Set<number>();
+    if (!pageEditSpec || pageCount === 0) return removed;
+    const kept = new Set(pageEditSpec.pageIndicesInOrder);
+    // Removing every page is treated as "no page edit" on export, so don't
+    // surface a state where all pages look removed in the other tabs.
+    if (kept.size === 0) return removed;
+    for (let index = 0; index < pageCount; index++) {
+      if (!kept.has(index)) removed.add(index);
+    }
+    return removed;
+  }, [pageEditSpec, pageCount]);
+
+  // If the currently-targeted page has been removed in the Pages tab, act on
+  // the first kept page instead. Derived (not stored) so navigation onto a kept
+  // page still round-trips through the raw state.
+  const effectiveSignPageIndex =
+    pageCount > 0 && removedPages.has(signPageIndex)
+      ? firstKeptPage(removedPages, pageCount) ?? signPageIndex
+      : signPageIndex;
+
+  const effectiveImagePageIndex =
+    pageCount > 0 && removedPages.has(imageSpec.activePageIndex)
+      ? firstKeptPage(removedPages, pageCount) ?? imageSpec.activePageIndex
+      : imageSpec.activePageIndex;
+
+  const effectiveImageSpec =
+    effectiveImagePageIndex === imageSpec.activePageIndex
+      ? imageSpec
+      : { ...imageSpec, activePageIndex: effectiveImagePageIndex };
 
   const handleDrop = useCallback(async (files: File[]) => {
     const pdf = files[0];
@@ -116,11 +161,11 @@ export function EditPdfClient() {
     setEncrypted(false);
     setPageEditSpec(null);
     setPageSummary(null);
-    setFormFields([]);
-    setFieldValues({});
-    setFormFillEnabled(false);
     setSignatureEnabled(false);
     setSignaturePng(null);
+    setAnnotations([]);
+    setSelectedAnnotationId(null);
+    setSignPageIndex(0);
     setImageEnabled(false);
     setImagePng(null);
     setImageSpec(DEFAULT_IMAGE_SPEC);
@@ -143,7 +188,7 @@ export function EditPdfClient() {
         ...prev,
         rangeEnd: preflight.pageCount ?? prev.rangeEnd,
       }));
-      const clampSpecToPages = (prev: SignatureSpec): SignatureSpec => {
+      setImageSpec((prev) => {
         const maxIndex = Math.max(0, (preflight.pageCount ?? 1) - 1);
         const filteredSelected = prev.selectedPages.filter(
           (index) => index <= maxIndex
@@ -157,17 +202,7 @@ export function EditPdfClient() {
               ? filteredSelected
               : [Math.min(prev.activePageIndex, maxIndex)],
         };
-      };
-      setSignatureSpec(clampSpecToPages);
-      setImageSpec(clampSpecToPages);
-
-      try {
-        const fields = await detectFormFields(pdf);
-        setFormFields(fields);
-      } catch (err) {
-        console.error("edit-pdf form detect failed:", err);
-        setFormFields([]);
-      }
+      });
     } catch (err) {
       console.error("edit-pdf preflight failed:", err);
       setPreflightError("Could not read this PDF. Try re-saving it and upload again.");
@@ -184,22 +219,87 @@ export function EditPdfClient() {
     setEncrypted(false);
     setPageEditSpec(null);
     setPageSummary(null);
-    setFormFields([]);
-    setFieldValues({});
-    setFormFillEnabled(false);
     setSignatureEnabled(false);
     setSignaturePng(null);
+    setAnnotations([]);
+    setSelectedAnnotationId(null);
+    setSignPageIndex(0);
     setImageEnabled(false);
     setImagePng(null);
     setResultBlob(null);
     setWatermarkEnabled(false);
     setWatermarkSpec(DEFAULT_WATERMARK_SPEC);
-    setSignatureSpec(DEFAULT_SIGNATURE_SPEC);
     setImageSpec(DEFAULT_IMAGE_SPEC);
   }
 
   const handleEditSpecChange = useCallback((spec: PageEditSpec) => {
     setPageEditSpec(spec);
+    setResultBlob(null);
+  }, []);
+
+  const addSignatureAnnotation = useCallback(() => {
+    if (!signaturePng?.length) return;
+    let aspect = 0.4;
+    try {
+      aspect = pngAspectRatio(signaturePng);
+    } catch {
+      aspect = 0.4;
+    }
+    setAnnotations((prev) => {
+      const created = createAnnotation({
+        type: "signature",
+        pageIndex: effectiveSignPageIndex,
+        existingOnPage: countOnPage(prev, effectiveSignPageIndex),
+        signatureAspect: aspect,
+      });
+      setSelectedAnnotationId(created.id);
+      return [...prev, created];
+    });
+    setResultBlob(null);
+  }, [signaturePng, effectiveSignPageIndex]);
+
+  const addElementAnnotation = useCallback(
+    (type: Exclude<AnnotationType, "signature">) => {
+      setAnnotations((prev) => {
+        const created = createAnnotation({
+          type,
+          pageIndex: effectiveSignPageIndex,
+          existingOnPage: countOnPage(prev, effectiveSignPageIndex),
+        });
+        setSelectedAnnotationId(created.id);
+        return [...prev, created];
+      });
+      setResultBlob(null);
+    },
+    [effectiveSignPageIndex]
+  );
+
+  const removeSignaturesOnCurrentPage = useCallback(() => {
+    setAnnotations((prev) =>
+      removeSignaturesOnPage(prev, effectiveSignPageIndex)
+    );
+    setSelectedAnnotationId((prevId) => {
+      if (!prevId) return prevId;
+      const current = annotations.find((a) => a.id === prevId);
+      if (
+        current?.type === "signature" &&
+        current.pageIndex === effectiveSignPageIndex
+      ) {
+        return null;
+      }
+      return prevId;
+    });
+    setResultBlob(null);
+  }, [annotations, effectiveSignPageIndex]);
+
+  const handleChangeAnnotation = useCallback((annotation: Annotation) => {
+    setAnnotations((prev) => updateAnnotation(prev, annotation.id, annotation));
+    setResultBlob(null);
+  }, []);
+
+  const handleDeleteAnnotation = useCallback((id: string) => {
+    setAnnotations((prev) => deleteAnnotation(prev, id));
+    setSelectedAnnotationId((prevId) => (prevId === id ? null : prevId));
     setResultBlob(null);
   }, []);
 
@@ -217,16 +317,13 @@ export function EditPdfClient() {
 
     return exportEditedPdfFull(pdfBlob, {
       pageEdit: pageEditSpec,
+      originalPageCount: pageCount,
       watermark:
         watermarkEnabled && watermarkSpec.text.trim()
           ? watermarkSpec
           : null,
-      formFillEnabled,
-      fieldMeta: formFields,
-      fieldValues,
-      signatureEnabled,
+      annotations,
       signaturePng,
-      signatureSpec,
       imageEnabled,
       imagePng,
       imageSpec,
@@ -279,35 +376,31 @@ export function EditPdfClient() {
           pageCount={pageCount}
         />
       ) : activeTab === "sign" ? (
-        <PdfFormSignPanel
-          fields={formFields}
-          formFillEnabled={formFillEnabled}
-          onFormFillEnabledChange={(enabled) => {
-            setFormFillEnabled(enabled);
-            setResultBlob(null);
-          }}
-          values={fieldValues}
-          onValuesChange={(values) => {
-            setFieldValues(values);
-            setResultBlob(null);
-          }}
+        <PdfAnnotationPanel
           signatureEnabled={signatureEnabled}
           onSignatureEnabledChange={(enabled) => {
             setSignatureEnabled(enabled);
-            if (!enabled) setSignaturePng(null);
+            if (!enabled) {
+              setSignaturePng(null);
+              setAnnotations((prev) =>
+                prev.filter((a) => a.type !== "signature")
+              );
+            }
             setResultBlob(null);
           }}
-          signatureSpec={signatureSpec}
-          onSignatureSpecChange={(spec) => {
-            setSignatureSpec(spec);
-            setResultBlob(null);
-          }}
+          signaturePng={signaturePng}
           onSignatureChange={(png) => {
             setSignaturePng(png);
             setResultBlob(null);
           }}
-          signaturePng={signaturePng}
-          pageCount={pageCount}
+          onAddSignature={addSignatureAnnotation}
+          onRemoveSignatures={removeSignaturesOnCurrentPage}
+          pageHasSignature={pageHasSignature(
+            annotations,
+            effectiveSignPageIndex
+          )}
+          onAddElement={addElementAnnotation}
+          activePageIndex={effectiveSignPageIndex}
         />
       ) : activeTab === "image" ? (
         <PdfImageOptionsPanel
@@ -317,7 +410,7 @@ export function EditPdfClient() {
             if (!enabled) setImagePng(null);
             setResultBlob(null);
           }}
-          spec={imageSpec}
+          spec={effectiveImageSpec}
           onSpecChange={(spec) => {
             setImageSpec(spec);
             setResultBlob(null);
@@ -328,6 +421,7 @@ export function EditPdfClient() {
           }}
           imagePng={imagePng}
           pageCount={pageCount}
+          removedPages={removedPages}
         />
       ) : null
     ) : null;
@@ -364,7 +458,7 @@ export function EditPdfClient() {
     <ToolShell
       icon={LayoutGrid}
       title="Edit PDF"
-      description="Reorder pages, add a watermark, fill forms, or sign. Runs on your device."
+      description="Reorder pages, add a watermark, sign, or annotate. Runs on your device."
       rightSidebar={rightSidebar}
     >
       {!file ? (
@@ -420,7 +514,11 @@ export function EditPdfClient() {
 
             {pdfBlob && !preflightError && (
               <>
-                <EditPdfTabBar active={activeTab} onChange={setActiveTab} />
+                <EditPdfTabBar
+                  active={activeTab}
+                  onChange={setActiveTab}
+                  className="sticky top-0 z-20 -mt-2 bg-background/95 pt-2 backdrop-blur-sm supports-backdrop-filter:bg-background/80"
+                />
 
                 <ProcessingBadge
                   mode={LOCAL_PROCESSING.mode}
@@ -451,23 +549,24 @@ export function EditPdfClient() {
                     spec={watermarkSpec}
                     enabled={watermarkEnabled}
                     pageCount={pageCount}
+                    removedPages={removedPages}
                   />
                 )}
 
                 {activeTab === "sign" && pdfBlob && (
-                  <PdfSignaturePreview
+                  <PdfAnnotationPreview
                     pdfBlob={pdfBlob}
+                    annotations={annotations}
                     signaturePng={signaturePng}
                     signatureEnabled={signatureEnabled}
-                    spec={signatureSpec}
-                    onSpecChange={(spec) => {
-                      setSignatureSpec(spec);
-                      setResultBlob(null);
-                    }}
+                    activePageIndex={effectiveSignPageIndex}
+                    onActivePageChange={setSignPageIndex}
                     pageCount={pageCount}
-                    imagePng={imagePng}
-                    imageEnabled={imageEnabled}
-                    imageSpec={imageSpec}
+                    selectedId={selectedAnnotationId}
+                    onSelectId={setSelectedAnnotationId}
+                    onChangeAnnotation={handleChangeAnnotation}
+                    onDeleteAnnotation={handleDeleteAnnotation}
+                    removedPages={removedPages}
                   />
                 )}
 
@@ -476,15 +575,15 @@ export function EditPdfClient() {
                     pdfBlob={pdfBlob}
                     imagePng={imagePng}
                     imageEnabled={imageEnabled}
-                    spec={imageSpec}
+                    spec={effectiveImageSpec}
                     onSpecChange={(spec) => {
                       setImageSpec(spec);
                       setResultBlob(null);
                     }}
                     pageCount={pageCount}
-                    signaturePng={signaturePng}
-                    signatureEnabled={signatureEnabled}
-                    signatureSpec={signatureSpec}
+                    signaturePng={null}
+                    signatureEnabled={false}
+                    removedPages={removedPages}
                   />
                 )}
 

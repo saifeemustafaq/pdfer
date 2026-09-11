@@ -11,7 +11,10 @@ import {
 import { GripVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { PdfPagePreviewFrame } from "@/components/pdf-page-preview-frame";
+import {
+  PdfPagePreviewFrame,
+  usePdfPreviewBudget,
+} from "@/components/pdf-page-preview-frame";
 import { AnnotationOverlay } from "@/components/annotation-overlay";
 import { AnnotationToolbar } from "@/components/annotation-toolbar";
 import { usePdfPagePreview } from "@/hooks/use-pdf-page-preview";
@@ -112,8 +115,9 @@ export function PdfAnnotationPreview({
     }
   }, []);
 
-  const { pageImageUrl, renderSize, pagePtSize, loading, error } =
-    usePdfPagePreview(pdfBlob, previewPage);
+  const { budget, onBudgetChange } = usePdfPreviewBudget();
+  const { pdf, pageImageUrl, renderSize, pagePtSize, loading, error } =
+    usePdfPagePreview(pdfBlob, previewPage, budget);
 
   const signatureUrl = useMemo(() => {
     if (!signatureEnabled || !signaturePng?.length) return null;
@@ -199,6 +203,8 @@ export function PdfAnnotationPreview({
         pageNumber={previewPage}
         pageCount={pageCount}
         onPageChange={handlePreviewPageChange}
+        onBudgetChange={onBudgetChange}
+        pdf={pdf}
         pageLabel={pageLabel}
         toolbar={
           selected ? (

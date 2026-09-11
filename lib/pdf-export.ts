@@ -1,11 +1,9 @@
 /**
  * Browser-only PDF page rasterization (pdfjs-dist). Import dynamically from client handlers only.
  */
-import * as PDFJS from "pdfjs-dist";
 import JSZip from "jszip";
 import type { PdfImageFormat } from "@/lib/constants";
-
-PDFJS.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+import { loadPdfDocument } from "@/lib/pdf-render";
 
 const DEFAULT_EXPORT_SCALE = 2;
 const DEFAULT_JPEG_QUALITY = 0.92;
@@ -26,8 +24,7 @@ export async function exportPdfToImageZip(
 ): Promise<Blob> {
   const scale = options?.scale ?? DEFAULT_EXPORT_SCALE;
   const jpegQuality = options?.jpegQuality ?? DEFAULT_JPEG_QUALITY;
-  const arrayBuffer = await pdfBlob.arrayBuffer();
-  const pdf = await PDFJS.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await loadPdfDocument(pdfBlob);
   const zip = new JSZip();
   const ext = format === "jpeg" ? "jpg" : "png";
   const mime = format === "jpeg" ? "image/jpeg" : "image/png";

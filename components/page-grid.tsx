@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import * as PDFJS from "pdfjs-dist";
 import {
   DndContext,
   closestCenter,
@@ -25,12 +24,15 @@ import { Badge } from "@/components/ui/badge";
 import { PrimaryActionButton, IconTouchButton } from "@/components/app-button";
 import type { PageEditSpec } from "@/lib/pdf-client";
 import {
+  isPdfRenderCancelled,
+  loadPdfDocument,
+  renderPdfPageToBitmap,
+} from "@/lib/pdf-render";
+import {
   resolvePageDimensions,
   type PageOrientation,
   type PageSizeKey,
 } from "@/lib/image-pdf-layout";
-
-PDFJS.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 const THUMB_WIDTH = 140;
 
@@ -43,18 +45,6 @@ function getThumbFrameDimensions(
     width: THUMB_WIDTH,
     height: Math.round(THUMB_WIDTH * (page.height / page.width)),
   };
-}
-
-function computeThumbRenderScale(
-  viewportWidth: number,
-  viewportHeight: number,
-  frameWidth: number,
-  frameHeight: number
-): number {
-  return Math.min(
-    frameWidth / viewportWidth,
-    frameHeight / viewportHeight
-  );
 }
 
 /** Solid, bordered controls on top of page thumbnails. */
@@ -74,7 +64,8 @@ const PAGE_REMOVE_BUTTON_CLASS = cn(
 type PageThumb = {
   id: string;
   sourceIndex: number;
-  dataUrl: string;
+  /** Object URL for a lossless PNG; revoked when the grid re-renders. */
+  imageUrl: string;
 };
 
 export type PageGridSummary = {
@@ -186,7 +177,7 @@ function SortablePageThumb({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={thumb.dataUrl}
+          src={thumb.imageUrl}
           alt={`Page ${thumb.sourceIndex + 1}`}
           className="max-h-full max-w-full object-contain pointer-events-none origin-center"
           style={{
@@ -281,6 +272,9 @@ export function PageGrid({
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+    const objectUrls: string[] = [];
+    let doc: Awaited<ReturnType<typeof loadPdfDocument>> | null = null;
 
     async function renderThumbs() {
       setThumbs([]);
@@ -289,8 +283,8 @@ export function PageGrid({
       setRenderError(null);
 
       try {
-        const arrayBuffer = await pdfBlob.arrayBuffer();
-        const pdf = await PDFJS.getDocument({ data: arrayBuffer }).promise;
+        const pdf = await loadPdfDocument(pdfBlob);
+        doc = pdf;
         if (cancelled) return;
 
         const results: PageThumb[] = [];
@@ -298,46 +292,40 @@ export function PageGrid({
         for (let i = 1; i <= pdf.numPages; i++) {
           if (cancelled) break;
           const page = await pdf.getPage(i);
-          const viewport = page.getViewport({ scale: 1 });
-          const scale = computeThumbRenderScale(
-            viewport.width,
-            viewport.height,
-            frame.width,
-            frame.height
-          );
-          const scaled = page.getViewport({ scale });
+          const bitmap = await renderPdfPageToBitmap(page, {
+            maxWidth: frame.width,
+            maxHeight: frame.height,
+            signal: controller.signal,
+          });
 
-          const canvas = document.createElement("canvas");
-          canvas.width = scaled.width;
-          canvas.height = scaled.height;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) continue;
+          if (cancelled) {
+            URL.revokeObjectURL(bitmap.objectUrl);
+            break;
+          }
 
-          await page.render({
-            canvasContext: ctx,
-            viewport: scaled,
-            canvas,
-          }).promise;
-
+          objectUrls.push(bitmap.objectUrl);
           const sourceIndex = i - 1;
           results.push({
             id: `page-${sourceIndex}`,
             sourceIndex,
-            dataUrl: canvas.toDataURL("image/jpeg", 0.8),
+            imageUrl: bitmap.objectUrl,
           });
-          if (!cancelled) setThumbs([...results]);
+          setThumbs([...results]);
         }
       } catch (err) {
-        if (!cancelled) {
-          setRenderError("Could not render page previews.");
-          console.error("PageGrid renderThumbs failed:", err);
-        }
+        if (cancelled || isPdfRenderCancelled(err)) return;
+        setRenderError("Could not render page previews.");
+        console.error("PageGrid renderThumbs failed:", err);
       }
     }
 
     renderThumbs();
+
     return () => {
       cancelled = true;
+      controller.abort();
+      for (const url of objectUrls) URL.revokeObjectURL(url);
+      doc?.destroy();
     };
   }, [pdfBlob, frame.width, frame.height]);
 

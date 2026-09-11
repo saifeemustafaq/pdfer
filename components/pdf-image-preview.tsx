@@ -2,7 +2,10 @@
 
 import { useMemo, type CSSProperties } from "react";
 import { Input } from "@/components/ui/input";
-import { PdfPagePreviewFrame } from "@/components/pdf-page-preview-frame";
+import {
+  PdfPagePreviewFrame,
+  usePdfPreviewBudget,
+} from "@/components/pdf-page-preview-frame";
 import { PdfOverlayImage } from "@/components/pdf-overlay-image";
 import { SignatureDraggableOverlay } from "@/components/signature-draggable-overlay";
 import { usePdfPagePreview } from "@/hooks/use-pdf-page-preview";
@@ -47,9 +50,11 @@ export function PdfImagePreview({
 }: PdfImagePreviewProps) {
   const previewPage = spec.activePageIndex + 1;
 
-  const { pageImageUrl, renderSize, loading, error } = usePdfPagePreview(
+  const { budget, onBudgetChange } = usePdfPreviewBudget();
+  const { pdf, pageImageUrl, renderSize, loading, error } = usePdfPagePreview(
     pdfBlob,
-    previewPage
+    previewPage,
+    budget
   );
 
   const imageUrl = useMemo(() => {
@@ -138,6 +143,8 @@ export function PdfImagePreview({
       pageNumber={previewPage}
       pageCount={pageCount}
       onPageChange={handlePreviewPageChange}
+      onBudgetChange={onBudgetChange}
+      pdf={pdf}
       pageLabel={pageLabel}
       hint={
         !imageEnabled ? (

@@ -2,7 +2,10 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import { Input } from "@/components/ui/input";
-import { PdfPagePreviewFrame } from "@/components/pdf-page-preview-frame";
+import {
+  PdfPagePreviewFrame,
+  usePdfPreviewBudget,
+} from "@/components/pdf-page-preview-frame";
 import { cn } from "@/lib/utils";
 import { usePdfPagePreview } from "@/hooks/use-pdf-page-preview";
 import { resolveKeptPage } from "@/lib/page-nav";
@@ -52,8 +55,9 @@ export function PdfWatermarkPreview({
     setPreviewPage(resolved + 1);
   }
 
-  const { pageImageUrl, renderSize, pagePtSize, loading, error } =
-    usePdfPagePreview(pdfBlob, effectivePage);
+  const { budget, onBudgetChange } = usePdfPreviewBudget();
+  const { pdf, pageImageUrl, renderSize, pagePtSize, loading, error } =
+    usePdfPagePreview(pdfBlob, effectivePage, budget);
 
   const overlay = useMemo(() => {
     if (!enabled || !spec.text.trim() || !pagePtSize.width || !renderSize.width) {
@@ -113,6 +117,8 @@ export function PdfWatermarkPreview({
       pageNumber={effectivePage}
       pageCount={pageCount}
       onPageChange={changePreviewPage}
+      onBudgetChange={onBudgetChange}
+      pdf={pdf}
       pageLabel={pageLabel}
       hint={
         !enabled ? (

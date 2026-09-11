@@ -7,12 +7,19 @@
 //   - Everything else (API routes, RSC, manifest, generated icons) -> not
 //     intercepted (default network-only behavior).
 
-const CACHE_VERSION = "pdfer-v1";
+const CACHE_VERSION = "pdfer-v2";
 const OFFLINE_URL = "/offline";
 const NAVIGATION_TIMEOUT_MS = 4000;
 
-const CACHE_FIRST_PREFIXES = ["/_next/static/", "/workers/", "/icons/"];
-const CACHE_FIRST_EXACT = ["/pdf.worker.min.mjs"];
+// /pdfjs/ holds the version-locked pdf.js worker, fonts, cmaps and wasm
+// decoders. They are fetched on demand while rendering, so caching them keeps
+// page previews working offline.
+const CACHE_FIRST_PREFIXES = [
+  "/_next/static/",
+  "/workers/",
+  "/icons/",
+  "/pdfjs/",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -57,10 +64,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 function isCacheFirst(url) {
-  return (
-    CACHE_FIRST_PREFIXES.some((prefix) => url.pathname.startsWith(prefix)) ||
-    CACHE_FIRST_EXACT.includes(url.pathname)
-  );
+  return CACHE_FIRST_PREFIXES.some((prefix) => url.pathname.startsWith(prefix));
 }
 
 async function cacheFirst(request) {

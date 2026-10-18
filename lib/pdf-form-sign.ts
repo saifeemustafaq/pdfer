@@ -198,6 +198,50 @@ export function setActivePlacement(
   return { ...spec, placement: position };
 }
 
+/**
+ * Add one page to a spec's targets, leaving the existing ones in place. No-op
+ * when the page is already targeted.
+ */
+export function addPageToSpec(
+  spec: SignatureSpec,
+  pageIndex: number,
+  pageCount: number
+): SignatureSpec {
+  const targeted = getSignedPageIndices(spec, pageCount);
+  if (targeted.includes(pageIndex)) return spec;
+
+  return {
+    ...spec,
+    pageScope: "selected",
+    selectedPages: [...targeted, pageIndex].sort((a, b) => a - b),
+  };
+}
+
+/**
+ * Drop one page from a spec's targets. The scope is normalized to an explicit
+ * selection first, so removing a page from an "all" or "range" target leaves
+ * every other page untouched.
+ */
+export function removePageFromSpec(
+  spec: SignatureSpec,
+  pageIndex: number,
+  pageCount: number
+): SignatureSpec {
+  const selectedPages = getSignedPageIndices(spec, pageCount).filter(
+    (index) => index !== pageIndex
+  );
+
+  const pagePlacements = { ...spec.pagePlacements };
+  delete pagePlacements[pageIndex];
+
+  return {
+    ...spec,
+    pageScope: "selected",
+    selectedPages,
+    pagePlacements,
+  };
+}
+
 /** Copy the active placement to every signed page (enables per-page mode). */
 export function applyActivePlacementToAllSignedPages(
   spec: SignatureSpec,

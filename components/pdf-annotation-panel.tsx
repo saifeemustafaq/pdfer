@@ -3,7 +3,10 @@
 import { useCallback, useState } from "react";
 import { Upload, PenLine, Type, Square, Circle, Slash, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { SecondaryActionButton } from "@/components/app-button";
+import {
+  PrimaryActionButton,
+  SecondaryActionButton,
+} from "@/components/app-button";
 import { FilePickerButton } from "@/components/file-picker-button";
 import { SignaturePadField } from "@/components/signature-pad-field";
 import { SignatureBackgroundRemovalDialog } from "@/components/signature-background-removal-dialog";
@@ -136,28 +139,30 @@ export function PdfAnnotationPanel({
             )}
           </FilePickerButton>
 
-          <div className="grid grid-cols-2 gap-2">
-            <SecondaryActionButton
-              type="button"
-              disabled={!signatureEnabled || !hasSignature}
-              onClick={onAddSignature}
-            >
-              <PenLine className="size-4" />
-              Add sign
-            </SecondaryActionButton>
-            <SecondaryActionButton
-              type="button"
-              disabled={!signatureEnabled || !pageHasSignature}
-              onClick={onRemoveSignatures}
-            >
-              <Trash2 className="size-4" />
-              Remove sign
-            </SecondaryActionButton>
-          </div>
+          {/* Placing the signature is the step this panel exists for, so it
+              gets the filled treatment while removal stays quiet. */}
+          <PrimaryActionButton
+            type="button"
+            className="w-full"
+            disabled={!signatureEnabled || !hasSignature}
+            onClick={onAddSignature}
+          >
+            <PenLine className="size-4" />
+            Add sign to {pageLabel}
+          </PrimaryActionButton>
+          <SecondaryActionButton
+            type="button"
+            className="w-full text-destructive hover:border-destructive hover:bg-destructive hover:text-white"
+            disabled={!signatureEnabled || !pageHasSignature}
+            onClick={onRemoveSignatures}
+          >
+            <Trash2 className="size-4" />
+            Remove sign
+          </SecondaryActionButton>
 
           <p className="text-xs text-muted-foreground">
             {hasSignature
-              ? `"Add sign" drops a copy on ${pageLabel}. Click again for more; "Remove sign" clears every signature on this page.`
+              ? `Click again to drop more copies. "Remove sign" clears every signature on ${pageLabel}.`
               : "Draw or upload a signature to enable placement."}
           </p>
         </fieldset>

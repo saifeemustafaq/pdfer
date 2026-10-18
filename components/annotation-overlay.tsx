@@ -104,6 +104,18 @@ type DragState = {
   startAnnotation: Annotation;
 };
 
+/** Normalized box of an annotation as CSS, with the page bottom-left as origin. */
+function annotationBoxStyle(annotation: Annotation): CSSProperties {
+  const rotation = annotation.rotation ?? 0;
+  return {
+    left: `${annotation.x * 100}%`,
+    bottom: `${annotation.y * 100}%`,
+    width: `${annotation.width * 100}%`,
+    height: `${annotation.height * 100}%`,
+    transform: rotation ? `rotate(${rotation}deg)` : undefined,
+  };
+}
+
 type AnnotationOverlayProps = {
   annotation: Annotation;
   selected: boolean;
@@ -140,13 +152,7 @@ export function AnnotationOverlay({
   const rootRef = useRef<HTMLDivElement>(null);
   const rotation = annotation.rotation ?? 0;
 
-  const boxStyle: CSSProperties = {
-    left: `${annotation.x * 100}%`,
-    bottom: `${annotation.y * 100}%`,
-    width: `${annotation.width * 100}%`,
-    height: `${annotation.height * 100}%`,
-    transform: rotation ? `rotate(${rotation}deg)` : undefined,
-  };
+  const boxStyle = annotationBoxStyle(annotation);
 
   function commit(next: Annotation) {
     onChange(clampAnnotationBox(next));
@@ -423,6 +429,39 @@ export function AnnotationOverlay({
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * An annotation drawn for context on a tab that does not own it (e.g. showing
+ * the signature while positioning an image). Shares `AnnotationContent` with
+ * the interactive overlay so context and editing look identical.
+ */
+export function AnnotationStaticOverlay({
+  annotation,
+  signatureUrl,
+  scale,
+}: {
+  annotation: Annotation;
+  signatureUrl: string | null;
+  /** Rendered pixels per PDF point, for font size and stroke width. */
+  scale: number;
+}) {
+  return (
+    <div
+      className="pointer-events-none absolute"
+      style={annotationBoxStyle(annotation)}
+      aria-hidden
+    >
+      <AnnotationContent
+        annotation={annotation}
+        signatureUrl={signatureUrl}
+        scale={scale}
+        editing={false}
+        onChange={() => {}}
+        onEndEdit={() => {}}
+      />
     </div>
   );
 }

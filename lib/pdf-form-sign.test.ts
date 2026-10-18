@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { PDFDocument } from "pdf-lib";
 import {
+  addPageToSpec,
   applySignaturePreset,
   applySignatures,
   clampSignaturePosition,
   getSignedPageIndices,
   getPlacementForPage,
+  removePageFromSpec,
   setActivePlacement,
   SIGNATURE_PLACEMENT_PRESETS,
   type SignatureSpec,
@@ -78,6 +80,61 @@ describe("getSignedPageIndices", () => {
         3
       )
     ).toEqual([0, 2]);
+  });
+});
+
+describe("addPageToSpec / removePageFromSpec", () => {
+  const base: SignatureSpec = {
+    pageScope: "selected",
+    selectedPages: [],
+    perPagePlacement: false,
+    placement: { x: 0.1, y: 0.1, width: 0.3 },
+    pagePlacements: {},
+    activePageIndex: 0,
+  };
+
+  it("targets the previewed page when the selection is empty", () => {
+    const next = addPageToSpec({ ...base, activePageIndex: 4 }, 4, 5);
+    expect(getSignedPageIndices(next, 5)).toEqual([4]);
+  });
+
+  it("keeps existing targets when adding and stays sorted", () => {
+    const next = addPageToSpec({ ...base, selectedPages: [3, 0] }, 1, 5);
+    expect(next.selectedPages).toEqual([0, 1, 3]);
+  });
+
+  it("is a no-op when the page is already targeted", () => {
+    const spec = { ...base, pageScope: "all" as const };
+    expect(addPageToSpec(spec, 2, 5)).toBe(spec);
+  });
+
+  it("removes a single page from an all-pages scope, keeping the rest", () => {
+    const next = removePageFromSpec({ ...base, pageScope: "all" }, 1, 4);
+    expect(next.pageScope).toBe("selected");
+    expect(getSignedPageIndices(next, 4)).toEqual([0, 2, 3]);
+  });
+
+  it("drops the per-page placement for the removed page only", () => {
+    const next = removePageFromSpec(
+      {
+        ...base,
+        pageScope: "all",
+        perPagePlacement: true,
+        pagePlacements: {
+          0: { x: 0, y: 0, width: 0.2 },
+          1: { x: 0.5, y: 0.5, width: 0.4 },
+        },
+      },
+      1,
+      3
+    );
+    expect(next.pagePlacements[1]).toBeUndefined();
+    expect(next.pagePlacements[0]).toEqual({ x: 0, y: 0, width: 0.2 });
+  });
+
+  it("can empty the selection so nothing is stamped", () => {
+    const next = removePageFromSpec({ ...base, selectedPages: [2] }, 2, 5);
+    expect(getSignedPageIndices(next, 5)).toEqual([]);
   });
 });
 

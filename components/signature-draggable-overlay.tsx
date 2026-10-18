@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { RotateCw } from "lucide-react";
+import { RotateCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   clampSignaturePosition,
@@ -25,6 +25,9 @@ type SignatureDraggableOverlayProps = {
   frameHeight: number;
   disabled?: boolean;
   onPositionChange: (position: SignaturePosition) => void;
+  /** Shows a remove control on the overlay when provided. */
+  onRemove?: () => void;
+  removeLabel?: string;
 };
 
 /** Draggable/resizable signature overlay for the edit PDF preview. */
@@ -36,6 +39,8 @@ export function SignatureDraggableOverlay({
   frameHeight,
   disabled = false,
   onPositionChange,
+  onRemove,
+  removeLabel = "Remove from this page",
 }: SignatureDraggableOverlayProps) {
   const dragRef = useRef<DragState | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -169,6 +174,25 @@ export function SignatureDraggableOverlay({
       />
       {!disabled && (
         <>
+          {onRemove && (
+            <button
+              type="button"
+              aria-label={removeLabel}
+              title={removeLabel}
+              className="absolute -right-2.5 -top-2.5 flex size-6 items-center justify-center rounded-full border border-border bg-card text-destructive shadow-sm transition-colors hover:bg-destructive hover:text-white"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+
           <div
             role="presentation"
             aria-hidden

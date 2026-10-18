@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { Upload, ImageIcon } from "lucide-react";
+import { Upload, ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { SecondaryActionButton } from "@/components/app-button";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { fileToImagePng } from "@/lib/image-overlay";
 import { resolveKeptPage } from "@/lib/page-nav";
 import {
+  addPageToSpec,
   applyActivePlacementToAllSignedPages,
   getActivePlacement,
   setActivePlacement,
@@ -59,7 +60,13 @@ export function PdfImageOptionsPanel({
 
       try {
         const png = await fileToImagePng(file);
+        const isFirstUpload = !imagePng?.length;
         onImageChange(png);
+        // Land the first image on the page the user is previewing rather than
+        // on whatever the default selection happened to be.
+        if (isFirstUpload) {
+          onSpecChange(addPageToSpec(spec, spec.activePageIndex, pageCount));
+        }
         toast.success("Image loaded.");
       } catch (err) {
         console.error("image upload failed:", err);
@@ -68,7 +75,7 @@ export function PdfImageOptionsPanel({
         );
       }
     },
-    [onImageChange]
+    [imagePng, onImageChange, onSpecChange, pageCount, spec]
   );
 
   return (
@@ -116,10 +123,25 @@ export function PdfImageOptionsPanel({
         </FilePickerButton>
 
         {imagePng?.length ? (
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <ImageIcon className="size-3.5" />
-            Image ready. Drag it on the preview to position it.
-          </p>
+          <>
+            <SecondaryActionButton
+              type="button"
+              className="w-full text-destructive hover:border-destructive hover:bg-destructive hover:text-white"
+              disabled={!enabled}
+              onClick={() => {
+                onImageChange(null);
+                toast.success("Image removed.");
+              }}
+            >
+              <Trash2 className="size-4" />
+              Remove image
+            </SecondaryActionButton>
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <ImageIcon className="size-3.5" />
+              Image ready. Drag it on the preview to position it, or use the X
+              on it to take it off a single page.
+            </p>
+          </>
         ) : (
           <p className="text-xs text-muted-foreground">
             Upload a PNG, JPEG, or WebP to place on the PDF.

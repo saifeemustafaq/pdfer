@@ -567,6 +567,9 @@ export function EditPdfClient() {
                     onChangeAnnotation={handleChangeAnnotation}
                     onDeleteAnnotation={handleDeleteAnnotation}
                     removedPages={removedPages}
+                    imagePng={imagePng}
+                    imageEnabled={imageEnabled}
+                    imageSpec={effectiveImageSpec}
                   />
                 )}
 
@@ -581,8 +584,9 @@ export function EditPdfClient() {
                       setResultBlob(null);
                     }}
                     pageCount={pageCount}
-                    signaturePng={null}
-                    signatureEnabled={false}
+                    annotations={annotations}
+                    signaturePng={signaturePng}
+                    signatureEnabled={signatureEnabled}
                     removedPages={removedPages}
                   />
                 )}

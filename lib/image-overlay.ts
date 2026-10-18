@@ -14,8 +14,11 @@ export const DEFAULT_IMAGE_POSITION: SignaturePosition = {
 };
 
 export const DEFAULT_IMAGE_SPEC: SignatureSpec = {
-  pageScope: "all",
-  selectedPages: [0],
+  // An added image is almost always meant for one specific page, unlike a
+  // watermark, so default to picking pages rather than stamping all of them.
+  // The selection starts empty; uploading an image targets the previewed page.
+  pageScope: "selected",
+  selectedPages: [],
   perPagePlacement: false,
   placement: DEFAULT_IMAGE_POSITION,
   pagePlacements: {},

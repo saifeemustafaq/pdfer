@@ -6,16 +6,17 @@ import {
   PdfPagePreviewFrame,
   usePdfPreviewBudget,
 } from "@/components/pdf-page-preview-frame";
-import { PdfOverlayImage } from "@/components/pdf-overlay-image";
+import { AnnotationStaticOverlay } from "@/components/annotation-overlay";
 import { SignatureDraggableOverlay } from "@/components/signature-draggable-overlay";
 import { usePdfPagePreview } from "@/hooks/use-pdf-page-preview";
 import { bytesToDataUrl } from "@/lib/image-data-url";
 import { resolveKeptPage } from "@/lib/page-nav";
+import { annotationsForPage, type Annotation } from "@/lib/pdf-annotations";
 import {
   getActivePlacement,
-  getPlacementForPage,
   isPageSigned,
   pngAspectRatio,
+  removePageFromSpec,
   setActivePlacement,
   signatureOverlayStyle,
   type SignatureSpec,
@@ -28,10 +29,11 @@ type PdfImagePreviewProps = {
   spec: SignatureSpec;
   onSpecChange: (spec: SignatureSpec) => void;
   pageCount: number;
-  /** Optional signature overlay shown as context on top of the image. */
+  /** Sign tab content, drawn on top as context. */
+  annotations?: Annotation[];
+  /** Shared signature PNG referenced by signature annotations. */
   signaturePng?: Uint8Array | null;
   signatureEnabled?: boolean;
-  signatureSpec?: SignatureSpec;
   /** Pages marked for removal in the Pages tab (skipped during navigation). */
   removedPages?: Set<number>;
 };
@@ -43,19 +45,16 @@ export function PdfImagePreview({
   spec,
   onSpecChange,
   pageCount,
+  annotations = [],
   signaturePng = null,
   signatureEnabled = false,
-  signatureSpec,
   removedPages,
 }: PdfImagePreviewProps) {
   const previewPage = spec.activePageIndex + 1;
 
   const { budget, onBudgetChange } = usePdfPreviewBudget();
-  const { pdf, pageImageUrl, renderSize, loading, error } = usePdfPagePreview(
-    pdfBlob,
-    previewPage,
-    budget
-  );
+  const { pdf, pageImageUrl, renderSize, pagePtSize, loading, error } =
+    usePdfPagePreview(pdfBlob, previewPage, budget);
 
   const imageUrl = useMemo(() => {
     if (!imageEnabled || !imagePng?.length) return null;
@@ -67,12 +66,15 @@ export function PdfImagePreview({
     return bytesToDataUrl(signaturePng, "image/png");
   }, [signatureEnabled, signaturePng]);
 
-  const signatureContextPlacement =
-    signatureContextUrl &&
-    signatureSpec &&
-    isPageSigned(signatureSpec, spec.activePageIndex, pageCount)
-      ? getPlacementForPage(signatureSpec, spec.activePageIndex)
-      : null;
+  // Context only: these are owned by the Sign tab. Export stamps the image
+  // first, so annotations are drawn on top of it here to match.
+  const contextAnnotations = useMemo(
+    () => annotationsForPage(annotations, spec.activePageIndex),
+    [annotations, spec.activePageIndex]
+  );
+
+  const annotationScale =
+    pagePtSize.height > 0 ? renderSize.height / pagePtSize.height : 1;
 
   const imageAspect = useMemo(() => {
     if (!imagePng?.length) return 0.35;
@@ -108,6 +110,10 @@ export function PdfImagePreview({
 
   function handlePlacementChange(position: typeof activePlacement) {
     onSpecChange(setActivePlacement(spec, position));
+  }
+
+  function handleRemoveFromPage() {
+    onSpecChange(removePageFromSpec(spec, spec.activePageIndex, pageCount));
   }
 
   const pageLabel =
@@ -147,7 +153,14 @@ export function PdfImagePreview({
       pdf={pdf}
       pageLabel={pageLabel}
       hint={
-        !imageEnabled ? (
+        <>
+        {contextAnnotations.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Your signature and annotations are shown on top. Switch to the Sign
+            &amp; Annotate tab to edit them.
+          </p>
+        )}
+        {!imageEnabled ? (
           <p className="text-xs text-muted-foreground">
             Enable Add image to preview placement on the page.
           </p>
@@ -157,18 +170,19 @@ export function PdfImagePreview({
           </p>
         ) : !pageHasImage ? (
           <p className="text-xs text-muted-foreground">
-            This page is not selected. Pick it in the sidebar or switch preview
-            page.
+            The image is not on this page. Tick it under &ldquo;Add image
+            to&rdquo; in the sidebar, or switch preview page.
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
             Drag the image to move it, the corner handle to resize, or the
-            handle above it to rotate.
+            handle above it to rotate. Use the X to take it off this page.
             {spec.perPagePlacement
               ? " Per-page mode: changes apply to this preview page only."
               : " Placement applies to all selected pages."}
           </p>
-        )
+        )}
+        </>
       }
       overlay={
         <>
@@ -181,6 +195,8 @@ export function PdfImagePreview({
                 frameWidth={renderSize.width}
                 frameHeight={renderSize.height}
                 onPositionChange={handlePlacementChange}
+                onRemove={handleRemoveFromPage}
+                removeLabel={`Remove image from page ${previewPage}`}
               />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
@@ -193,13 +209,15 @@ export function PdfImagePreview({
               />
             )
           ) : null}
-          {signatureContextUrl && signatureContextPlacement && (
-            <PdfOverlayImage
-              url={signatureContextUrl}
-              position={signatureContextPlacement}
-              alt="Signature"
-            />
-          )}
+          {renderSize.width > 0 &&
+            contextAnnotations.map((annotation) => (
+              <AnnotationStaticOverlay
+                key={annotation.id}
+                annotation={annotation}
+                signatureUrl={signatureContextUrl}
+                scale={annotationScale}
+              />
+            ))}
         </>
       }
     />

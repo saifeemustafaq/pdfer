@@ -17,10 +17,16 @@ import {
 } from "@/components/pdf-page-preview-frame";
 import { AnnotationOverlay } from "@/components/annotation-overlay";
 import { AnnotationToolbar } from "@/components/annotation-toolbar";
+import { PdfOverlayImage } from "@/components/pdf-overlay-image";
 import { usePdfPagePreview } from "@/hooks/use-pdf-page-preview";
 import { bytesToDataUrl } from "@/lib/image-data-url";
 import { annotationsForPage, type Annotation } from "@/lib/pdf-annotations";
 import { resolveKeptPage } from "@/lib/page-nav";
+import {
+  getPlacementForPage,
+  isPageSigned,
+  type SignatureSpec,
+} from "@/lib/pdf-form-sign";
 
 type PdfAnnotationPreviewProps = {
   pdfBlob: Blob;
@@ -36,6 +42,10 @@ type PdfAnnotationPreviewProps = {
   onDeleteAnnotation: (id: string) => void;
   /** Pages marked for removal in the Pages tab (skipped during navigation). */
   removedPages?: Set<number>;
+  /** Image from the Image tab, drawn underneath as context. */
+  imagePng?: Uint8Array | null;
+  imageEnabled?: boolean;
+  imageSpec?: SignatureSpec;
 };
 
 export function PdfAnnotationPreview({
@@ -51,6 +61,9 @@ export function PdfAnnotationPreview({
   onChangeAnnotation,
   onDeleteAnnotation,
   removedPages,
+  imagePng = null,
+  imageEnabled = false,
+  imageSpec,
 }: PdfAnnotationPreviewProps) {
   const previewPage = activePageIndex + 1;
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -128,6 +141,20 @@ export function PdfAnnotationPreview({
     () => annotationsForPage(annotations, activePageIndex),
     [annotations, activePageIndex]
   );
+
+  // Context only: the image is owned by the Image tab. Export stamps it before
+  // annotations, so it is drawn underneath them here to match.
+  const imageContextUrl = useMemo(() => {
+    if (!imageEnabled || !imagePng?.length) return null;
+    return bytesToDataUrl(imagePng, "image/png");
+  }, [imageEnabled, imagePng]);
+
+  const imageContextPlacement =
+    imageContextUrl &&
+    imageSpec &&
+    isPageSigned(imageSpec, activePageIndex, pageCount)
+      ? getPlacementForPage(imageSpec, activePageIndex)
+      : null;
 
   const selected = pageAnnotations.find((a) => a.id === selectedId) ?? null;
 
@@ -249,7 +276,14 @@ export function PdfAnnotationPreview({
           ) : undefined
         }
         hint={
-        pageAnnotations.length === 0 ? (
+        <>
+        {imageContextPlacement && (
+          <p className="text-xs text-muted-foreground">
+            Your added image is shown underneath. Switch to the Add image tab to
+            move or resize it.
+          </p>
+        )}
+        {pageAnnotations.length === 0 ? (
           <p className="text-xs text-muted-foreground">
             Use the buttons on the right to add a signature, text, or a shape to
             this page. Then drag to move, and use the corner handle to resize.
@@ -261,7 +295,8 @@ export function PdfAnnotationPreview({
             options appear in the floating toolbar over the preview (grab its
             handle to move it out of the way).
           </p>
-        )
+        )}
+        </>
       }
       overlay={
         renderSize.width > 0 ? (
@@ -272,6 +307,14 @@ export function PdfAnnotationPreview({
               onPointerDown={() => onSelectId(null)}
               aria-hidden
             />
+
+            {imageContextUrl && imageContextPlacement && (
+              <PdfOverlayImage
+                url={imageContextUrl}
+                position={imageContextPlacement}
+                alt="Added image"
+              />
+            )}
 
             {pageAnnotations.map((annotation) => (
               <AnnotationOverlay
